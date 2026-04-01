@@ -106,7 +106,7 @@ function AddTransactionForm() {
           <ArrowLeft className="text-foreground w-6 h-6" />
         </Link>
         <div>
-          <h1 className="font-heading text-2xl font-bold  text-foreground">Add Entr</h1>
+          <h1 className="font-heading text-2xl font-bold  text-foreground">Add Entry</h1>
           <p className="text-sm text-muted-foreground ">Record a new transaction.</p>
         </div>
       </header>

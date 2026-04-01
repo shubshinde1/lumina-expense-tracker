@@ -20,7 +20,7 @@ function AddTransactionForm() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
-  const [locationObj, setLocationObj] = useState<{lat: number, lng: number, address: string} | null>(null);
+  const [locationObj, setLocationObj] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
   // Auto-fetch location on mount
@@ -106,7 +106,7 @@ function AddTransactionForm() {
           <ArrowLeft className="text-foreground w-6 h-6" />
         </Link>
         <div>
-          <h1 className="font-heading text-2xl font-bold  text-foreground">Add Entry</h1>
+          <h1 className="font-heading text-2xl font-bold  text-foreground">Add Entr</h1>
           <p className="text-sm text-muted-foreground ">Record a new transaction.</p>
         </div>
       </header>
@@ -228,20 +228,20 @@ function AddTransactionForm() {
           </div>
 
           <div className="group relative pt-4 pb-2 border-t border-border mt-6">
-             <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <div className={`p-2 rounded-full ${isFetchingLocation ? 'bg-primary/20 text-primary animate-pulse' : locationObj ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground'}`}>
-                  {isFetchingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4"/>}
-                </div>
-                <div className="flex-1">
-                   <p className="font-semibold text-foreground text-xs uppercase  flex items-center justify-between">
-                      Device Location
-                      {locationObj && <span className="text-[10px] text-muted-foreground font-mono bg-accent px-1.5 py-0.5 rounded opacity-50">{locationObj.lat.toFixed(2)}, {locationObj.lng.toFixed(2)}</span>}
-                   </p>
-                   <p className="text-[11px] truncate mt-0.5">
-                     {isFetchingLocation ? "Acquiring GPS fix..." : locationObj ? locationObj.address : "Location access denied or unavailable"}
-                   </p>
-                </div>
-             </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <div className={`p-2 rounded-full ${isFetchingLocation ? 'bg-primary/20 text-primary animate-pulse' : locationObj ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground'}`}>
+                {isFetchingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+              </div>
+              <div className="flex-1">
+                <p className="font-semibold text-foreground text-xs uppercase  flex items-center justify-between">
+                  Device Location
+                  {locationObj && <span className="text-[10px] text-muted-foreground font-mono bg-accent px-1.5 py-0.5 rounded opacity-50">{locationObj.lat.toFixed(2)}, {locationObj.lng.toFixed(2)}</span>}
+                </p>
+                <p className="text-[11px] truncate mt-0.5">
+                  {isFetchingLocation ? "Acquiring GPS fix..." : locationObj ? locationObj.address : "Location access denied or unavailable"}
+                </p>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -260,7 +260,7 @@ function AddTransactionForm() {
 
 export default function AddTransactionPage() {
   return (
-    <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin w-8 h-8 text-primary"/></div>}>
+    <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="animate-spin w-8 h-8 text-primary" /></div>}>
       <AddTransactionForm />
     </Suspense>
   );

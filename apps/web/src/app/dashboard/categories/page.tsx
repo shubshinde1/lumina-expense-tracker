@@ -27,6 +27,7 @@ export default function CategoriesPage() {
   const queryClient = useQueryClient();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [subName, setSubName] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   const [newCatName, setNewCatName] = useState("");
   const [newCatType, setNewCatType] = useState<"expense" | "income">("expense");
@@ -334,13 +335,13 @@ export default function CategoriesPage() {
                   <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-muted-foreground mt-1">Sub-categories</p>
                   <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <button 
-                      onClick={(e) => { e.stopPropagation(); openEditCat(cat); }} 
+                      onClick={(e) => { e.stopPropagation(); openEditCat(cat); setDeleteConfirmId(null); }} 
                       className="flex-1 sm:flex-none justify-center text-[10px] uppercase font-bold  text-primary hover:bg-primary/10 px-3 py-2 sm:py-1.5 rounded transition-colors flex items-center gap-1.5 bg-primary/5 sm:bg-transparent"
                     >
                        <Edit3 className="w-3 h-3"/> Edit Parent
                     </button>
                     <button 
-                      onClick={(e) => { e.stopPropagation(); deleteCatMutation.mutate(cat._id); }} 
+                      onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cat._id); }} 
                       className="flex-1 sm:flex-none justify-center text-[10px] uppercase font-bold  text-destructive hover:bg-destructive/10 px-3 py-2 sm:py-1.5 rounded transition-colors flex items-center gap-1.5 bg-destructive/5 sm:bg-transparent"
                     >
                        <Trash2 className="w-3 h-3"/> Delete Parent
@@ -431,6 +432,41 @@ export default function CategoriesPage() {
           </div>
         ))}
       </section>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-card w-full max-w-sm rounded-3xl p-6 border border-border shadow-2xl scale-100 animate-in zoom-in-95 duration-200">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-destructive/20">
+               <Trash2 className="w-7 h-7 text-destructive" />
+            </div>
+            <h3 className="font-heading font-bold text-center text-xl text-foreground mb-2">Delete Category?</h3>
+            <p className="text-center text-sm text-muted-foreground mb-6">Are you sure you want to completely remove this category and all its transactions? This action is permanent.</p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setDeleteConfirmId(null)} 
+                className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-accent text-foreground hover:bg-accent/80 transition-colors"
+                disabled={deleteCatMutation.isPending}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => { 
+                  deleteCatMutation.mutate(deleteConfirmId, {
+                    onSuccess: () => setDeleteConfirmId(null)
+                  }); 
+                }} 
+                disabled={deleteCatMutation.isPending}
+                className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-destructive text-white hover:bg-destructive/90 shadow-[0_8px_16px_-4px_var(--tw-shadow-color)] [--tw-shadow-color:color-mix(in_srgb,var(--color-destructive)_40%,transparent)] transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                {deleteCatMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </div>
   );

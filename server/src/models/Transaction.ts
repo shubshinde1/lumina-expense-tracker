@@ -14,6 +14,7 @@ const transactionSchema = new mongoose.Schema(
       lng: { type: Number },
       address: { type: String },
     },
+    paymentMode: { type: String, enum: ['Cash', 'UPI', 'Net Banking', 'Credit Card', 'Debit Card'], default: 'UPI' },
   },
   { timestamps: true }
 );

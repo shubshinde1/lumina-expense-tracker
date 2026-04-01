@@ -42,7 +42,7 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
 
 export const addTransaction = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, amount, description, date, category, subcategory, location } = req.body;
+    const { type, amount, description, date, category, subcategory, location, paymentMode } = req.body;
     const userId = req.user._id;
 
     const transaction = await Transaction.create({
@@ -54,6 +54,7 @@ export const addTransaction = async (req: AuthRequest, res: Response) => {
       category,
       subcategory,
       location,
+      paymentMode: paymentMode || 'UPI',
     });
 
     res.status(201).json(transaction);
@@ -88,10 +89,10 @@ export const getTransaction = async (req: AuthRequest, res: Response): Promise<v
 
 export const updateTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { type, amount, description, date, category, subcategory, location } = req.body;
+    const { type, amount, description, date, category, subcategory, location, paymentMode } = req.body;
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      { type, amount, description, date, category, subcategory, location },
+      { type, amount, description, date, category, subcategory, location, paymentMode },
       { new: true }
     );
     if (!transaction) {

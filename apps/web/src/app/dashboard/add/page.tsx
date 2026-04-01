@@ -20,6 +20,7 @@ function AddTransactionForm() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
+  const [paymentMode, setPaymentMode] = useState("UPI");
   const [locationObj, setLocationObj] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
@@ -91,6 +92,7 @@ function AddTransactionForm() {
       category: categoryId,
       subcategory: subcategoryId || undefined,
       location: locationObj || undefined,
+      paymentMode,
     });
   };
 
@@ -225,6 +227,25 @@ function AddTransactionForm() {
               value={date}
               onChange={(e) => setDate(e.target.value)}
             />
+          </div>
+
+          {/* Payment Mode */}
+          <div className="group relative">
+            <label className="block font-medium text-xs text-muted-foreground mb-3  uppercase">
+              Payment Mode
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['Cash', 'UPI', 'Net Banking', 'Credit Card', 'Debit Card'].map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setPaymentMode(mode)}
+                  className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase transition-all ${paymentMode === mode ? 'bg-foreground text-background shadow-md' : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="group relative pt-4 pb-2 border-t border-border mt-6">

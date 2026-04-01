@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useThemeStore } from "@/stores/useThemeStore";
 
 function groupByDate(transactions: any[]) {
   const groups: Record<string, any[]> = {};
@@ -169,66 +170,20 @@ export default function HistoryPage() {
             <div key={date}>
               <p className="text-[11px] font-bold uppercase  text-muted-foreground mb-2 px-1">{date}</p>
               <div className="space-y-2">
-                {txs.map((tx: any) => (
-                  <div key={tx._id} className="flex items-center justify-between p-4 rounded-2xl bg-card hover:bg-accent/40 transition-colors border border-border group py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center border shrink-0"
-                        style={{
-                          backgroundColor: `${tx.category?.color || '#888'}20`,
-                          borderColor: `${tx.category?.color || '#888'}40`,
-                          color: tx.category?.color || '#888'
-                        }}
-                      >
-                        <span className="material-symbols-outlined text-[20px]">{tx.category?.icon || 'wallet'}</span>
-                      </div>
-                      <div className="overflow-hidden pr-2">
-                        <h4 className="font-semibold text-sm text-foreground leading-tight truncate">{tx.description || tx.category?.name || "Unknown"}</h4>
-                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 truncate flex-wrap">
-                          <span>{tx.category?.name}</span>
-                          {tx.location?.address && (
-                             <>
-                               <span className="w-1 h-1 rounded-full bg-border" />
-                               <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3"/> {tx.location.address}</span>
-                             </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                {txs.map((tx: any) => {
+                  const subCategoryName = tx.subcategory && tx.category?.subcategories 
+                    ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory)?.name 
+                    : null;
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="flex flex-col items-end">
-                        <p className={`font-bold font-heading text-sm ${tx.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
-                          {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                        </p>
-                        <div className={`flex items-center gap-0.5 mt-0.5`}>
-                          {tx.type === 'income'
-                            ? <ArrowDownRight className="w-3 h-3 text-primary" />
-                            : <ArrowUpRight className="w-3 h-3 text-destructive" />}
-                          <span className="text-[10px] text-muted-foreground capitalize">{tx.type}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 bg-accent/50 md:bg-accent rounded-full opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity p-1 mt-1 md:mt-0">
-                         <button
-                            onClick={(e) => { e.preventDefault(); router.push(`/dashboard/edit/${tx._id}`); }}
-                            className="w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-card flex items-center justify-center transition-all bg-card/50 md:bg-transparent"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => { 
-                              e.preventDefault(); 
-                              setDeleteConfirmId(tx._id);
-                            }}
-                            className="w-8 h-8 rounded-full text-muted-foreground flex items-center justify-center hover:bg-destructive hover:text-white transition-all bg-card/50 md:bg-transparent"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  return (
+                  <SwipeableTxCard 
+                    key={tx._id} 
+                    tx={tx} 
+                    subCategoryName={subCategoryName} 
+                    onEdit={() => router.push(`/dashboard/edit/${tx._id}`)}
+                    onDelete={() => setDeleteConfirmId(tx._id)}
+                  />
+                )})}
               </div>
             </div>
           ))}
@@ -270,4 +225,118 @@ export default function HistoryPage() {
       )}
     </div>
   );
+}
+
+function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
+  const swipeActionPref = useThemeStore((s) => s.swipeAction) || 'right-to-edit';
+  const isRightEdit = swipeActionPref === 'right-to-edit';
+
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const currentX = e.touches[0].clientX;
+    const dx = currentX - startX;
+    // Limit drag to a reasonable threshold
+    if (dx > 120) setDragX(120);
+    else if (dx < -120) setDragX(-120);
+    else setDragX(dx);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    if (dragX > 75) {
+      isRightEdit ? onEdit() : onDelete();
+    } else if (dragX < -75) {
+      isRightEdit ? onDelete() : onEdit();
+    }
+    setDragX(0); // Snap back
+  };
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden mb-3 md:mb-2 bg-card border border-border">
+      {/* Background Action Layers map to swipe direction */}
+      <div className="absolute inset-0 flex items-center justify-between" style={{ zIndex: 0 }}>
+        {/* Swipe Right Background */}
+        <div className={`h-full flex items-center px-6 font-bold uppercase text-xs w-1/2 transition-opacity ${dragX > 0 ? (isRightEdit ? 'opacity-100 bg-primary/20 text-primary' : 'opacity-100 bg-destructive/20 text-destructive') : 'opacity-0'}`}>
+           {isRightEdit ? <><Edit2 className="w-5 h-5 mr-3" /> Edit</> : <><Trash2 className="w-5 h-5 mr-3" /> Delete</>}
+        </div>
+        {/* Swipe Left Background */}
+        <div className={`h-full flex items-center justify-end px-6 font-bold uppercase text-xs w-1/2 transition-opacity ${dragX < 0 ? (isRightEdit ? 'opacity-100 bg-destructive/20 text-destructive' : 'opacity-100 bg-primary/20 text-primary') : 'opacity-0'}`}>
+           {isRightEdit ? <>Delete <Trash2 className="w-5 h-5 ml-3" /></> : <>Edit <Edit2 className="w-5 h-5 ml-3" /></>}
+        </div>
+      </div>
+      
+      {/* Foreground Card */}
+      <div 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ transform: `translateX(${dragX}px)`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
+        className="relative z-10 flex items-center justify-between p-4 rounded-2xl bg-card border border-transparent group hover:bg-accent/40 md:py-3 cursor-grab active:cursor-grabbing"
+      >
+        <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none md:pointer-events-auto">
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center border shrink-0"
+            style={{
+              backgroundColor: `${tx.category?.color || '#888'}20`,
+              borderColor: `${tx.category?.color || '#888'}40`,
+              color: tx.category?.color || '#888'
+            }}
+          >
+            <span className="material-symbols-outlined text-[20px]">{tx.category?.icon || 'wallet'}</span>
+          </div>
+          <div className="pr-2 flex-1 min-w-0">
+            <h4 className="font-semibold text-sm text-foreground leading-tight truncate">{tx.description || tx.category?.name || "Unknown"}</h4>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 truncate">
+              <span className="shrink-0">{tx.category?.name} {subCategoryName && <span className="opacity-70 font-medium tracking-tight">/ {subCategoryName}</span>}</span>
+              {tx.location?.address && (
+                  <>
+                  <span className="w-1 h-1 rounded-full bg-border shrink-0" />
+                  <span className="flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 shrink-0"/> <span className="truncate">{tx.location.address}</span></span>
+                  </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 shrink-0 pointer-events-none md:pointer-events-auto">
+          <div className="flex flex-col items-end">
+            <p className={`font-bold font-heading text-sm ${tx.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
+              {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </p>
+            <div className={`flex items-center gap-0.5 mt-0.5`}>
+              {tx.type === 'income'
+                ? <ArrowDownRight className="w-3 h-3 text-primary" />
+                : <ArrowUpRight className="w-3 h-3 text-destructive" />}
+              <span className="text-[10px] text-muted-foreground capitalize">{tx.type}</span>
+            </div>
+          </div>
+
+          {/* Hidden on mobile, completely relying on swipe. Only appears on Desktop hover. */}
+          <div className="hidden md:flex items-center gap-1 bg-accent rounded-full opacity-0 group-hover:opacity-100 transition-opacity p-1">
+              <button
+                onClick={(e) => { e.preventDefault(); onEdit(); }}
+                className="w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-card flex items-center justify-center transition-all bg-transparent"
+              >
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={(e) => { e.preventDefault(); onDelete(); }}
+                className="w-8 h-8 rounded-full text-muted-foreground flex items-center justify-center hover:bg-destructive hover:text-white transition-all bg-transparent"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

@@ -188,21 +188,26 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {recentTransactions.slice(0, 6).map((tx: any) => (
+              {recentTransactions.slice(0, 6).map((tx: any) => {
+                const subCategoryName = tx.subcategory && tx.category?.subcategories 
+                  ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory)?.name 
+                  : null;
+
+                return (
                 <div key={tx._id} onClick={() => router.push(`/dashboard/edit/${tx._id}`)} className="flex items-center justify-between p-3 rounded-2xl hover:bg-accent/60 transition-colors cursor-pointer group">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm"
+                      className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0"
                       style={{ backgroundColor: `${tx.category?.color || '#888'}20`, color: tx.category?.color || '#888' }}
                     >
                       <span className="material-symbols-outlined text-[20px]">{tx.category?.icon || 'wallet'}</span>
                     </div>
-                    <div className="flex flex-col overflow-hidden max-w-[140px] md:max-w-none">
+                    <div className="flex flex-col flex-1 min-w-0 pr-2">
                       <h4 className="font-bold text-sm text-foreground leading-tight truncate">{tx.description || tx.category?.name || "Unknown"}</h4>
                       <p className="text-[11px] text-muted-foreground mt-0.5 font-medium flex items-center gap-1.5 truncate">
-                        {tx.category?.name}
+                        <span className="shrink-0">{tx.category?.name} {subCategoryName && <span className="opacity-70 tracking-tight">/ {subCategoryName}</span>}</span>
                         {tx.location?.address && (
-                          <span className="flex items-center gap-0.5"><span className="w-1 h-1 rounded-full bg-border inline-block"/> <MapPin className="w-2.5 h-2.5"/> {tx.location.address.split(',')[0]}</span>
+                          <span className="flex items-center gap-0.5 truncate"><span className="w-1 h-1 rounded-full bg-border inline-block shrink-0"/> <MapPin className="w-2.5 h-2.5 shrink-0"/> <span className="truncate">{tx.location.address.split(',')[0]}</span></span>
                         )}
                       </p>
                     </div>
@@ -216,7 +221,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </section>
 

@@ -10,7 +10,7 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
     const transactions = await Transaction.find({ user: userId })
       .sort({ date: -1 })
       .limit(5)
-      .populate("category", "name icon color");
+      .populate("category", "name icon color subcategories");
 
     const totals = await Transaction.aggregate([
       { $match: { user: userId } },
@@ -65,7 +65,7 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
   try {
     const transactions = await Transaction.find({ user: req.user._id })
       .sort({ date: -1 })
-      .populate("category", "name icon color");
+      .populate("category", "name icon color subcategories");
     res.json(transactions);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -75,7 +75,7 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
 export const getTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const transaction = await Transaction.findOne({ _id: req.params.id, user: req.user._id })
-      .populate("category", "name icon color");
+      .populate("category", "name icon color subcategories");
     if (!transaction) {
       res.status(404).json({ message: "Transaction not found" });
       return;

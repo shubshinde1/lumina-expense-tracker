@@ -1,7 +1,7 @@
 'use client';
 
 import { useThemeStore } from "@/stores/useThemeStore";
-import { Moon, Sun, Check, Circle, Square, Settings as SettingsIcon, LogOut, ChevronRight } from "lucide-react";
+import { Moon, Sun, Check, Circle, Square, Settings as SettingsIcon, LogOut, ChevronRight, ArrowRightLeft } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -21,7 +21,7 @@ const RADIUS = [
 ];
 
 export default function SettingsPage() {
-  const { theme, setTheme, accentColor, setAccentColor, radius, setRadius } = useThemeStore();
+  const { theme, setTheme, accentColor, setAccentColor, radius, setRadius, swipeAction, setSwipeAction } = useThemeStore();
   const { user, logout } = useAuthStore();
   const router = useRouter();
 
@@ -122,6 +122,28 @@ export default function SettingsPage() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Swipe Actions */}
+        <div className="space-y-3 pt-4 border-t border-border">
+          <p className="text-xs uppercase  text-muted-foreground font-bold">Transaction Interaction</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setSwipeAction('right-to-edit')}
+              className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${swipeAction === 'right-to-edit' || !swipeAction ? 'bg-accent border-primary text-primary' : 'bg-card/50 border-border text-muted-foreground'}`}
+            >
+               <span className="font-bold text-xs">Swipe Right (→)</span>
+               <span className="text-[10px] uppercase font-bold text-primary">Edit</span>
+            </button>
+            <button
+              onClick={() => setSwipeAction('left-to-edit')}
+              className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all ${swipeAction === 'left-to-edit' ? 'bg-accent border-primary text-primary' : 'bg-card/50 border-border text-muted-foreground'}`}
+            >
+               <span className="font-bold text-xs">Swipe Left (←)</span>
+               <span className="text-[10px] uppercase font-bold text-primary">Edit</span>
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground/70 flex items-center gap-1.5"><ArrowRightLeft className="w-3 h-3"/> Choose which direction to swipe to Edit or Delete (the opposite action is automatically assigned to the other direction).</p>
         </div>
 
       </section>

@@ -17,7 +17,7 @@ function AddTransactionForm() {
   const [type, setType] = useState<"expense" | "income">(initialType);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
   const [paymentMode, setPaymentMode] = useState("UPI");
@@ -222,7 +222,7 @@ function AddTransactionForm() {
             </label>
             <input
               className="w-full h-14 px-6 bg-accent rounded-xl border-none ring-1 ring-border focus:ring-primary focus:bg-secondary outline-none transition-all duration-300 text-foreground placeholder-muted-foreground/50"
-              type="date"
+              type="datetime-local"
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}

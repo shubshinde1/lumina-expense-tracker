@@ -77,7 +77,8 @@ export default function EditTransactionPage() {
       setType(transaction.type);
       setAmount(transaction.amount.toString());
       setDescription(transaction.description || "");
-      setDate(new Date(transaction.date).toISOString().split('T')[0]);
+      const d = new Date(transaction.date);
+      setDate(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
       setCategoryId(transaction.category);
       setSubcategoryId(transaction.subcategory || "");
       setPaymentMode(transaction.paymentMode || "UPI");
@@ -225,7 +226,7 @@ export default function EditTransactionPage() {
             <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase">Date</label>
             <input
               className="w-full h-14 px-6 bg-accent rounded-xl border-none ring-1 ring-border focus:ring-primary focus:bg-secondary outline-none transition-all duration-300 text-foreground placeholder-muted-foreground/50"
-              type="date"
+              type="datetime-local"
               required
               value={date}
               onChange={(e) => setDate(e.target.value)}

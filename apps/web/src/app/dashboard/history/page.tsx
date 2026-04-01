@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin } from "lucide-react";
+import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard } from "lucide-react";
 import api from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
@@ -9,8 +9,12 @@ import { useRouter } from "next/navigation";
 import { useThemeStore } from "@/stores/useThemeStore";
 
 function groupByDate(transactions: any[]) {
-  const groups: Record<string, any[]> = {};
-  transactions.forEach((tx) => {
+  const groupsMap = new Map<string, any[]>();
+  
+  // Purely sort descending (newest first completely)
+  const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  sortedTransactions.forEach((tx) => {
     const date = new Date(tx.date);
     const today = new Date();
     const yesterday = new Date();
@@ -21,10 +25,12 @@ function groupByDate(transactions: any[]) {
     else if (date.toDateString() === yesterday.toDateString()) label = 'Yesterday';
     else label = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    if (!groups[label]) groups[label] = [];
-    groups[label].push(tx);
+    if (!groupsMap.has(label)) groupsMap.set(label, []);
+    groupsMap.get(label)!.push(tx);
   });
-  return groups;
+  
+  // Convert Map to Array to strictly preserve chronological insertion order
+  return Array.from(groupsMap.entries()).map(([dateLabel, txs]) => ({ dateLabel, txs }));
 }
 
 export default function HistoryPage() {
@@ -166,9 +172,9 @@ export default function HistoryPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {Object.entries(grouped).map(([date, txs]) => (
-            <div key={date}>
-              <p className="text-[11px] font-bold uppercase  text-muted-foreground mb-2 px-1">{date}</p>
+          {grouped.map(({ dateLabel, txs }) => (
+            <div key={dateLabel}>
+              <p className="text-[11px] font-bold uppercase  text-muted-foreground mb-2 px-1">{dateLabel}</p>
               <div className="space-y-2">
                 {txs.map((tx: any) => {
                   const subCategoryName = tx.subcategory && tx.category?.subcategories 
@@ -228,15 +234,13 @@ export default function HistoryPage() {
 }
 
 function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
-  const swipeActionPref = useThemeStore((s) => s.swipeAction) || 'right-to-edit';
-  const isRightEdit = swipeActionPref === 'right-to-edit';
-
   const [dragX, setDragX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    setStartX(e.touches[0].clientX);
+    // Start measuring from current position (0 or -140)
+    setStartX(e.touches[0].clientX - dragX);
     setIsDragging(true);
   };
 
@@ -244,43 +248,59 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
     if (!isDragging) return;
     const currentX = e.touches[0].clientX;
     const dx = currentX - startX;
-    // Limit drag to a reasonable threshold
-    if (dx > 120) setDragX(120);
-    else if (dx < -120) setDragX(-120);
+    
+    // Restrict dragging to RTL (negative values only), max 140px width for 2 buttons
+    if (dx > 0) setDragX(0);
+    else if (dx < -140) setDragX(-140);
     else setDragX(dx);
   };
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    if (dragX > 75) {
-      isRightEdit ? onEdit() : onDelete();
-    } else if (dragX < -75) {
-      isRightEdit ? onDelete() : onEdit();
+    // Snap open if dragged past halfway point
+    if (dragX < -70) {
+      setDragX(-140);
+    } else {
+      setDragX(0); 
     }
-    setDragX(0); // Snap back
+  };
+
+  // Close swipe if clicking on the main card body while it's open
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (dragX === -140) {
+      e.stopPropagation();
+      setDragX(0);
+    }
   };
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-3 md:mb-2 bg-card border border-border">
-      {/* Background Action Layers map to swipe direction */}
-      <div className="absolute inset-0 flex items-center justify-between" style={{ zIndex: 0 }}>
-        {/* Swipe Right Background */}
-        <div className={`h-full flex items-center px-6 font-bold uppercase text-xs w-1/2 transition-opacity ${dragX > 0 ? (isRightEdit ? 'opacity-100 bg-primary/20 text-primary' : 'opacity-100 bg-destructive/20 text-destructive') : 'opacity-0'}`}>
-           {isRightEdit ? <><Edit2 className="w-5 h-5 mr-3" /> Edit</> : <><Trash2 className="w-5 h-5 mr-3" /> Delete</>}
-        </div>
-        {/* Swipe Left Background */}
-        <div className={`h-full flex items-center justify-end px-6 font-bold uppercase text-xs w-1/2 transition-opacity ${dragX < 0 ? (isRightEdit ? 'opacity-100 bg-destructive/20 text-destructive' : 'opacity-100 bg-primary/20 text-primary') : 'opacity-0'}`}>
-           {isRightEdit ? <>Delete <Trash2 className="w-5 h-5 ml-3" /></> : <>Edit <Edit2 className="w-5 h-5 ml-3" /></>}
-        </div>
+      {/* Action Drawer (Revealed from Right) */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-end w-[140px]" style={{ zIndex: 0 }}>
+        <button 
+          onClick={(e) => { e.preventDefault(); onEdit(); }} 
+          className="h-full flex-1 flex flex-col items-center justify-center bg-primary/20 hover:bg-primary/30 text-primary transition-colors border-r border-border/10"
+        >
+           <Edit2 className="w-4 h-4 mb-1" />
+           <span className="text-[10px] font-bold uppercase">Edit</span>
+        </button>
+        <button 
+          onClick={(e) => { e.preventDefault(); onDelete(); }} 
+          className="h-full flex-1 flex flex-col items-center justify-center bg-destructive/20 hover:bg-destructive/30 text-destructive transition-colors"
+        >
+           <Trash2 className="w-4 h-4 mb-1" />
+           <span className="text-[10px] font-bold uppercase">Delete</span>
+        </button>
       </div>
       
       {/* Foreground Card */}
       <div 
+        onClick={handleCardClick}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ transform: `translateX(${dragX}px)`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1)' }}
-        className="relative z-10 flex items-center justify-between p-4 rounded-2xl bg-card border border-transparent group hover:bg-accent/40 md:py-3 cursor-grab active:cursor-grabbing"
+        style={{ transform: `translateX(${dragX}px)`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+        className="relative z-10 flex items-center justify-between p-4 rounded-2xl bg-card border border-transparent group hover:bg-accent/40 md:py-3 cursor-grab active:cursor-grabbing w-full"
       >
         <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none md:pointer-events-auto">
           <div
@@ -297,6 +317,8 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
             <h4 className="font-semibold text-sm text-foreground leading-tight truncate">{tx.description || tx.category?.name || "Unknown"}</h4>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 truncate">
               <span className="shrink-0">{tx.category?.name} {subCategoryName && <span className="opacity-70 font-medium tracking-tight">/ {subCategoryName}</span>}</span>
+              <span className="w-1 h-1 rounded-full bg-border shrink-0" />
+              <span className="shrink-0 font-medium tracking-tight text-muted-foreground/80">{new Date(tx.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
               {tx.location?.address && (
                   <>
                   <span className="w-1 h-1 rounded-full bg-border shrink-0" />
@@ -312,12 +334,22 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
             <p className={`font-bold font-heading text-sm ${tx.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
               {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </p>
-            <div className={`flex items-center gap-0.5 mt-0.5`}>
-              {tx.type === 'income'
-                ? <ArrowDownRight className="w-3 h-3 text-primary" />
-                : <ArrowUpRight className="w-3 h-3 text-destructive" />}
-              <span className="text-[10px] text-muted-foreground capitalize">{tx.type}</span>
-            </div>
+            {(() => {
+              const mode = tx.paymentMode || 'UPI';
+              let colorClasses = "bg-indigo-500/10 text-indigo-500"; // UPI default
+              let Icon = QrCode;
+              if (mode === 'Cash') { colorClasses = "bg-emerald-500/10 text-emerald-500"; Icon = Banknote; }
+              else if (mode === 'Net Banking') { colorClasses = "bg-blue-500/10 text-blue-500"; Icon = Building2; }
+              else if (mode === 'Credit Card') { colorClasses = "bg-amber-500/10 text-amber-500"; Icon = CreditCard; }
+              else if (mode === 'Debit Card') { colorClasses = "bg-orange-500/10 text-orange-500"; Icon = CreditCard; }
+
+              return (
+                <div className={`flex items-center gap-1 mt-1.5 px-2.5 py-0.5 rounded-full ${colorClasses}`}>
+                  <Icon className="w-[10px] h-[10px]" />
+                  <span className="text-[9px] uppercase font-bold tracking-widest">{mode}</span>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Hidden on mobile, completely relying on swipe. Only appears on Desktop hover. */}

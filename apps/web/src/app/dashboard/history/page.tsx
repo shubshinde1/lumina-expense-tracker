@@ -299,7 +299,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ transform: `translateX(${dragX}px)`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+        style={{ transform: `translateX(${dragX}px) scale(${1 - Math.min(Math.abs(dragX) / 140, 1) * 0.10})`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
         className="relative z-10 flex items-center justify-between p-4 rounded-2xl bg-card border border-transparent group hover:bg-accent/40 md:py-3 cursor-grab active:cursor-grabbing w-full"
       >
         <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none md:pointer-events-auto">
@@ -315,15 +315,17 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
           </div>
           <div className="pr-2 flex-1 min-w-0">
             <h4 className="font-semibold text-sm text-foreground leading-tight truncate">{tx.description || tx.category?.name || "Unknown"}</h4>
-            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5 truncate">
-              <span className="shrink-0">{tx.category?.name} {subCategoryName && <span className="opacity-70 font-medium tracking-tight">/ {subCategoryName}</span>}</span>
-              <span className="w-1 h-1 rounded-full bg-border shrink-0" />
-              <span className="shrink-0 font-medium tracking-tight text-muted-foreground/80">{new Date(tx.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+            <div className="flex flex-col gap-0.5 mt-0.5 min-w-0">
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate w-full">
+                <span className="shrink-0">{tx.category?.name} {subCategoryName && <span className="opacity-70 font-medium tracking-tight">/ {subCategoryName}</span>}</span>
+                <span className="w-1 h-1 rounded-full bg-border shrink-0" />
+                <span className="shrink-0 font-medium tracking-tight text-muted-foreground/80">{new Date(tx.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+              </div>
               {tx.location?.address && (
-                  <>
-                  <span className="w-1 h-1 rounded-full bg-border shrink-0" />
-                  <span className="flex items-center gap-0.5 truncate"><MapPin className="w-3 h-3 shrink-0"/> <span className="truncate">{tx.location.address}</span></span>
-                  </>
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 truncate w-full">
+                    <MapPin className="w-2.5 h-2.5 shrink-0"/> 
+                    <span className="truncate">{tx.location.address}</span>
+                  </div>
               )}
             </div>
           </div>

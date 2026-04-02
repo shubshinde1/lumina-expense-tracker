@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toLocalDateTimeLocal } from "@/lib/dateUtils";
 
 function AddTransactionForm() {
   const router = useRouter();
@@ -17,7 +18,7 @@ function AddTransactionForm() {
   const [type, setType] = useState<"expense" | "income">(initialType);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+  const [date, setDate] = useState(toLocalDateTimeLocal(new Date()));
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
   const [paymentMode, setPaymentMode] = useState("UPI");

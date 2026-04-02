@@ -6,6 +6,7 @@ import api from "@/lib/api";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
+import { getTodayIST, formatDateIST } from "@/lib/dateUtils";
 
 type DashboardData = {
   balance: number;
@@ -55,9 +56,9 @@ export default function DashboardPage() {
   const savingsRate = income > 0 ? Math.round(((income - expense) / income) * 100) : 0;
   const spendPercent = income > 0 ? Math.min(100, Math.round((expense / income) * 100)) : 0;
 
-  // Derive today's spend intelligently using date
-  const today = new Date().toISOString().split('T')[0];
-  const spentToday = recentTransactions.filter(t => t.type === 'expense' && t.date.startsWith(today)).reduce((a, b) => a + b.amount, 0);
+  // Derive today's spend intelligently using IST date
+  const today = getTodayIST();
+  const spentToday = recentTransactions.filter(t => t.type === 'expense' && new Date(t.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) === today).reduce((a, b) => a + b.amount, 0);
 
   return (
     <div className="p-5 md:p-10 space-y-8 animate-in fade-in zoom-in-95 duration-500 pb-32 max-w-7xl mx-auto">
@@ -217,7 +218,7 @@ export default function DashboardPage() {
                       {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
                     </p>
                     <p className="text-[10px] text-muted-foreground uppercase font-bold  mt-0.5">
-                       {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                       {formatDateIST(tx.date, { day: 'numeric', month: 'short' })}
                     </p>
                   </div>
                 </div>

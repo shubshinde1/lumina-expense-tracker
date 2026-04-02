@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
+import { toLocalDateTimeLocal } from "@/lib/dateUtils";
 
 export default function EditTransactionPage() {
   const router = useRouter();
@@ -77,8 +78,7 @@ export default function EditTransactionPage() {
       setType(transaction.type);
       setAmount(transaction.amount.toString());
       setDescription(transaction.description || "");
-      const d = new Date(transaction.date);
-      setDate(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+      setDate(toLocalDateTimeLocal(transaction.date));
       setCategoryId(transaction.category);
       setSubcategoryId(transaction.subcategory || "");
       setPaymentMode(transaction.paymentMode || "UPI");

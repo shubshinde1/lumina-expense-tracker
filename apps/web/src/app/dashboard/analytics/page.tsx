@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Loader2, PieChart as PieChartIcon, TrendingUp, TrendingDown, Calendar, Wallet, MapPin, Target } from "lucide-react";
 import api from "@/lib/api";
 import { useState, useEffect } from "react";
+import { formatDateIST, IST_TIMEZONE } from "@/lib/dateUtils";
 import { 
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
@@ -37,34 +38,51 @@ export default function AnalyticsPage() {
 
   // Formatting Date purely for grouping lines
   const formatDateForGroup = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getDate()} ${d.toLocaleString('default', { month: 'short' })}`;
+    return formatDateIST(dateStr, { day: 'numeric', month: 'short' });
   };
 
-  // Time Filtering
+  // Time Filtering in IST
   const filterByTime = (tx: any) => {
     if (timeFilter === 'all') return true;
     
+    // Get transaction date in IST midnight for comparison
     const txDate = new Date(tx.date);
-    const now = new Date();
+    const txISTString = txDate.toLocaleDateString('en-CA', { timeZone: IST_TIMEZONE });
+    const txISTDate = new Date(txISTString);
+    
+    const nowISTString = new Date().toLocaleDateString('en-CA', { timeZone: IST_TIMEZONE });
+    const nowISTDate = new Date(nowISTString);
     
     if (timeFilter === 'week') {
-      const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-      return txDate >= weekAgo;
+      const weekAgo = new Date(nowISTDate);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      return txISTDate >= weekAgo;
     }
     if (timeFilter === 'month') {
-       return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
+       const today = new Date();
+       const currentMonth = today.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, month: 'numeric' });
+       const currentYear = today.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
+       
+       const txMonth = txDate.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, month: 'numeric' });
+       const txYear = txDate.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
+       
+       return txMonth === currentMonth && txYear === currentYear;
     }
     if (timeFilter === 'quarter') {
-      const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-      return txDate >= quarterAgo;
+      const quarterAgo = new Date(nowISTDate);
+      quarterAgo.setMonth(quarterAgo.getMonth() - 3);
+      return txISTDate >= quarterAgo;
     }
     if (timeFilter === 'year') {
-      return txDate.getFullYear() === now.getFullYear();
+      const currentYear = new Date().toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
+      const txYear = txDate.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
+      return txYear === currentYear;
     }
     if (timeFilter === 'custom') {
       if (!customStart || !customEnd) return true;
-      return txDate >= new Date(customStart) && txDate <= new Date(customEnd);
+      const start = new Date(customStart);
+      const end = new Date(customEnd);
+      return txISTDate >= start && txISTDate <= end;
     }
     return true;
   }

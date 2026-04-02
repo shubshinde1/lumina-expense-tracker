@@ -7,6 +7,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useThemeStore } from "@/stores/useThemeStore";
+import { formatDateIST, formatTimeIST, getTodayIST, getYesterdayIST, isSameDayIST, getStartOfMonthIST } from "@/lib/dateUtils";
 
 function groupByDate(transactions: any[]) {
   const groupsMap = new Map<string, any[]>();
@@ -14,16 +15,21 @@ function groupByDate(transactions: any[]) {
   // Purely sort descending (newest first completely)
   const sortedTransactions = [...transactions].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  sortedTransactions.forEach((tx) => {
-    const date = new Date(tx.date);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+  const todayStr = getTodayIST();
+  const yesterdayStr = getYesterdayIST();
 
+  sortedTransactions.forEach((tx) => {
+    const txDateStr = formatDateIST(tx.date, { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-'); // Helper needed or just use separate components
+    // Actually, let's just use isSameDayIST against getTodayIST equivalents
+    
     let label: string;
-    if (date.toDateString() === today.toDateString()) label = 'Today';
-    else if (date.toDateString() === yesterday.toDateString()) label = 'Yesterday';
-    else label = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    // Simpler way:
+    const txGroupDate = new Date(tx.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
+    
+    if (txGroupDate === todayStr) label = 'Today';
+    else if (txGroupDate === yesterdayStr) label = 'Yesterday';
+    else label = formatDateIST(tx.date, { day: 'numeric', month: 'long', year: 'numeric' });
 
     if (!groupsMap.has(label)) groupsMap.set(label, []);
     groupsMap.get(label)!.push(tx);
@@ -40,11 +46,15 @@ function HorizontalDateSelector({
   selectedDate: Date, 
   onDateChange: (d: Date) => void 
 }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  const [currentMonth, setCurrentMonth] = useState(getStartOfMonthIST(selectedDate));
 
   // Generate past 24 months for nice scrolling
   const today = new Date();
-  const pastMonths = Array.from({length: 24}, (_, i) => new Date(today.getFullYear(), today.getMonth() - i, 1));
+  const pastMonths = Array.from({length: 24}, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return getStartOfMonthIST(d);
+  });
   
   // Group by Year
   const monthsByYear: { year: number, months: Date[] }[] = [];
@@ -73,17 +83,18 @@ function HorizontalDateSelector({
     <div className="flex flex-col rounded-3xl bg-[#0A0C0E] border border-[#161B18] overflow-hidden select-none w-full shadow-lg relative">
       
       {/* Reset To Today Button centered on the sticky border and section line */}
-      <button 
-         onClick={() => {
-           const today = new Date();
-           setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
-           onDateChange(today);
-           
-           setTimeout(() => {
-             document.getElementById('months-scroll')?.scrollTo({ left: 0, behavior: 'smooth' });
-             document.getElementById(`day-${today.getDate()}`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-           }, 50);
-         }}
+       <button 
+          onClick={() => {
+            const today = new Date();
+            setCurrentMonth(getStartOfMonthIST(today));
+            onDateChange(today);
+            
+            setTimeout(() => {
+              document.getElementById('months-scroll')?.scrollTo({ left: 0, behavior: 'smooth' });
+              const dayId = `day-${new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric' }).format(today)}`;
+              document.getElementById(dayId)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }, 50);
+          }}
          className="absolute left-[48px] -translate-x-1/2 top-[55px] -translate-y-1/2 w-7 h-7 rounded-full bg-[#181A1E] border-[1.5px] border-[#2A2D35] flex items-center justify-center z-30 text-[#888] hover:text-[#4ADE80] hover:rotate-180 transition-all duration-300 shadow-[0_4px_10px_rgba(0,0,0,0.6)] cursor-pointer"
          title="Go to Today"
       >
@@ -132,11 +143,12 @@ function HorizontalDateSelector({
              {/* Days List for the Week */}
              <div className="flex items-center px-4 gap-3 bg-[#0A0C0E]">
                 {group.days.map(d => {
-                  const isSelected = d.toDateString() === selectedDate.toDateString();
+                  const isSelected = isSameDayIST(d, selectedDate);
+                  const dayNum = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric' });
                   return (
                     <button
-                      id={`day-${d.getDate()}`}
-                      key={d.getDate()}
+                      id={`day-${dayNum}`}
+                      key={dayNum}
                       onClick={() => onDateChange(d)}
                       className={`w-[50px] h-[52px] rounded-[16px] flex flex-col items-center justify-center shrink-0 transition-all ${
                         isSelected 
@@ -144,8 +156,8 @@ function HorizontalDateSelector({
                           : 'bg-[#181A1E] hover:bg-[#202328]'
                       }`}
                     >
-                      <span className={`text-[9px] font-extrabold uppercase tracking-widest mb-[2px] transition-colors ${isSelected ? 'text-[#0A0C0E]/70' : 'text-[#666]'}`}>{d.toLocaleString('default', { weekday: 'short' })}</span>
-                      <span className={`text-[17px] font-bold font-heading leading-none transition-colors ${isSelected ? 'text-[#0A0C0E]' : 'text-white'}`}>{d.getDate()}</span>
+                      <span className={`text-[9px] font-extrabold uppercase tracking-widest mb-[2px] transition-colors ${isSelected ? 'text-[#0A0C0E]/70' : 'text-[#666]'}`}>{d.toLocaleString('default', { weekday: 'short', timeZone: 'Asia/Kolkata' })}</span>
+                      <span className={`text-[17px] font-bold font-heading leading-none transition-colors ${isSelected ? 'text-[#0A0C0E]' : 'text-white'}`}>{dayNum}</span>
                     </button>
                   )
                 })}
@@ -458,7 +470,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
               <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate w-full">
                 <span className="shrink-0">{tx.category?.name} {subCategoryName && <span className="opacity-70 font-medium tracking-tight">/ {subCategoryName}</span>}</span>
                 <span className="w-1 h-1 rounded-full bg-border shrink-0" />
-                <span className="shrink-0 font-medium tracking-tight text-muted-foreground/80">{new Date(tx.date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}</span>
+                <span className="shrink-0 font-medium tracking-tight text-muted-foreground/80">{formatTimeIST(tx.date, { hour: 'numeric', minute: '2-digit' })}</span>
               </div>
               {tx.location?.address && (
                   <div className="flex items-center gap-1 text-[10px] text-muted-foreground/60 truncate w-full">

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
+import { useAuthStore } from "@/stores/useAuthStore";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal } from "@/lib/dateUtils";
 
@@ -22,8 +23,9 @@ function EditContent() {
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
   const queryClient = useQueryClient();
-
-  // Selected State
+  const user = useAuthStore((s) => s.user);
+  
+  const [isMounted, setIsMounted] = useState(false);
   const [type, setType] = useState<"expense" | "income">("expense");
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
@@ -33,6 +35,13 @@ function EditContent() {
   const [paymentMode, setPaymentMode] = useState("UPI");
   const [locationObj, setLocationObj] = useState<{lat: number, lng: number, address: string} | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    if (isMounted && !user) {
+      router.push("/");
+    }
+  }, [user, router, isMounted]);
 
   // Auto-fetch location on mount
   useEffect(() => {
@@ -95,8 +104,6 @@ function EditContent() {
     }
   }, [transaction]);
 
-  const filteredCategories = (categories || []).filter((c: any) => c.type === type);
-
   const mutation = useMutation({
     mutationFn: async (payload: any) => {
       const response = await api.put(`/transactions/${id}`, payload);
@@ -111,6 +118,13 @@ function EditContent() {
       alert(error.response?.data?.message || "Failed to edit transaction");
     }
   });
+
+  if (!isMounted) return null;
+  if (!user) return null;
+  if (!id) return <div className="p-12 text-center text-muted-foreground">Error: No ID Provided</div>;
+  if (isLoadingTx) return <div className="p-12 text-center text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>;
+
+  const filteredCategories = (categories || []).filter((c: any) => c.type === type);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

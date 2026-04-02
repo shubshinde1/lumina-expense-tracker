@@ -337,7 +337,7 @@ export default function HistoryPage() {
                     key={tx._id} 
                     tx={tx} 
                     subCategoryName={subCategoryName} 
-                    onEdit={() => router.push(`/dashboard/edit/${tx._id}`)}
+                    onEdit={() => router.push(`/dashboard/edit?id=${tx._id}`)}
                     onDelete={() => setDeleteConfirmId(tx._id)}
                   />
                 )})}

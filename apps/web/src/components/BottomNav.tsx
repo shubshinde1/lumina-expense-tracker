@@ -99,8 +99,8 @@ export default function BottomNav() {
           </div>
         </li>
 
-        <NavItem href="/dashboard/history" icon={<LayoutList />} label="History" active={pathname === "/dashboard/history"} />
-        <NavItem href="/dashboard/settings" icon={<Settings />} label="Settings" active={pathname === "/dashboard/settings"} />
+        <NavItem href="/dashboard/history" icon={<LayoutList />} label="History" active={pathname.startsWith("/dashboard/history") || pathname.startsWith("/dashboard/edit")} />
+        <NavItem href="/dashboard/settings" icon={<Settings />} label="Settings" active={pathname.startsWith("/dashboard/settings")} />
       </ul>
     </nav>
   );

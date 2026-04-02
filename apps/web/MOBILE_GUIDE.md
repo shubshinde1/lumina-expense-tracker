@@ -12,6 +12,7 @@ Since the Android app is a wrapper for your web project, follow these steps to s
    ```bash
    cd apps/web
    npm run build
+   npx cap open android
    ```
 3. **Sync to Android**:
    ```bash

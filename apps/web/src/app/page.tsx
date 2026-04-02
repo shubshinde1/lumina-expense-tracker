@@ -2,7 +2,7 @@
 
 import { Fingerprint, Mail, Lock, User as UserIcon, Loader2, KeyRound, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -20,7 +20,14 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const router = useRouter();
-  const setUser = useAuthStore((state) => state.setUser);
+  const { user, setUser } = useAuthStore();
+
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   // 1. Login
   const loginMutation = useMutation({

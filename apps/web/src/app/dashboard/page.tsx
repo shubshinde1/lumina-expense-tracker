@@ -8,6 +8,8 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
 import { getTodayIST, formatDateIST } from "@/lib/dateUtils";
 
+import { useState, useEffect } from "react";
+
 type DashboardData = {
   balance: number;
   income: number;
@@ -25,6 +27,13 @@ function getGreeting() {
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/");
+    }
+  }, [user, router]);
+
   const firstName = user?.name?.split(" ")[0] || "there";
 
   const { data, isLoading, error } = useQuery<DashboardData>({

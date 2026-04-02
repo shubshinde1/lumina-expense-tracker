@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard } from "lucide-react";
+import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw } from "lucide-react";
 import api from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
@@ -33,12 +33,137 @@ function groupByDate(transactions: any[]) {
   return Array.from(groupsMap.entries()).map(([dateLabel, txs]) => ({ dateLabel, txs }));
 }
 
+function HorizontalDateSelector({ 
+  selectedDate, 
+  onDateChange 
+}: { 
+  selectedDate: Date, 
+  onDateChange: (d: Date) => void 
+}) {
+  const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+
+  // Generate past 24 months for nice scrolling
+  const today = new Date();
+  const pastMonths = Array.from({length: 24}, (_, i) => new Date(today.getFullYear(), today.getMonth() - i, 1));
+  
+  // Group by Year
+  const monthsByYear: { year: number, months: Date[] }[] = [];
+  pastMonths.forEach(m => {
+    let group = monthsByYear.find(g => g.year === m.getFullYear());
+    if (!group) {
+      group = { year: m.getFullYear(), months: [] };
+      monthsByYear.push(group);
+    }
+    group.months.push(m);
+  });
+
+  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+  const allDays = Array.from({ length: daysInMonth }, (_, i) => new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i + 1));
+  
+  // Group by Week (7 day max per week group)
+  const weeks: { weekNum: number, days: Date[] }[] = [];
+  for (let i = 0; i < allDays.length; i += 7) {
+    weeks.push({
+      weekNum: Math.floor(i / 7) + 1,
+      days: allDays.slice(i, i + 7)
+    });
+  }
+
+  return (
+    <div className="flex flex-col rounded-3xl bg-[#0A0C0E] border border-[#161B18] overflow-hidden select-none w-full shadow-lg relative">
+      
+      {/* Reset To Today Button centered on the sticky border and section line */}
+      <button 
+         onClick={() => {
+           const today = new Date();
+           setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+           onDateChange(today);
+           
+           setTimeout(() => {
+             document.getElementById('months-scroll')?.scrollTo({ left: 0, behavior: 'smooth' });
+             document.getElementById(`day-${today.getDate()}`)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+           }, 50);
+         }}
+         className="absolute left-[48px] -translate-x-1/2 top-[55px] -translate-y-1/2 w-7 h-7 rounded-full bg-[#181A1E] border-[1.5px] border-[#2A2D35] flex items-center justify-center z-30 text-[#888] hover:text-[#4ADE80] hover:rotate-180 transition-all duration-300 shadow-[0_4px_10px_rgba(0,0,0,0.6)] cursor-pointer"
+         title="Go to Today"
+      >
+         <RotateCcw className="w-3.5 h-3.5" />
+      </button>
+
+      {/* Top Row: Year & Months Continuous Scroll */}
+      <div id="months-scroll" className="flex items-stretch h-[55px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {monthsByYear.map((group) => (
+          <div key={group.year} className="flex shrink-0">
+             {/* Sticky Year Label */}
+             <div className="sticky left-0 w-[48px] bg-[#0C120E] flex items-center justify-center shrink-0 z-20 border-r border-[#161B18]">
+               <span className="leading-none text-[11px] font-bold text-[#4ADE80] -rotate-90 tracking-[0.2em]">{group.year}</span>
+             </div>
+             {/* Months List for the Year */}
+             <div className="flex items-center px-5 gap-8 bg-[#0A0C0E]">
+                {group.months.map(m => {
+                  const isSelected = m.getMonth() === currentMonth.getMonth() && m.getFullYear() === currentMonth.getFullYear();
+                  return (
+                    <button 
+                      id={`month-${m.getFullYear()}-${m.getMonth()}`}
+                      key={m.getMonth()}
+                      onClick={() => setCurrentMonth(m)}
+                      className={`text-[15px] transition-all shrink-0 ${isSelected ? 'text-white font-bold' : 'text-[#666] font-semibold hover:text-white/80'}`}
+                    >
+                      {m.toLocaleString('default', { month: 'short' })}
+                    </button>
+                  )
+                })}
+             </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Explicit Horizontal Section Divider */}
+      <div className="w-full h-[1px] bg-[#161B18] shrink-0 z-10" />
+
+      {/* Bottom Row: Weeks & Days Continuous Scroll */}
+      <div id="days-scroll" className="flex items-stretch h-[68px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        {weeks.map((group) => (
+          <div key={group.weekNum} className="flex shrink-0">
+             {/* Sticky Week Label */}
+             <div className="sticky left-0 w-[48px] bg-[#0C120E] flex items-center justify-center shrink-0 z-20 border-r border-[#161B18]">
+               <span className="text-[9px] font-bold text-[#4ADE80] -rotate-90 tracking-[0.1em] whitespace-nowrap uppercase">Week {group.weekNum}</span>
+             </div>
+             {/* Days List for the Week */}
+             <div className="flex items-center px-4 gap-3 bg-[#0A0C0E]">
+                {group.days.map(d => {
+                  const isSelected = d.toDateString() === selectedDate.toDateString();
+                  return (
+                    <button
+                      id={`day-${d.getDate()}`}
+                      key={d.getDate()}
+                      onClick={() => onDateChange(d)}
+                      className={`w-[50px] h-[52px] rounded-[16px] flex flex-col items-center justify-center shrink-0 transition-all ${
+                        isSelected 
+                          ? 'bg-[#4ADE80] shadow-[0_0_15px_rgba(74,222,128,0.2)] ring-[1.5px] ring-white/90 scale-100' 
+                          : 'bg-[#181A1E] hover:bg-[#202328]'
+                      }`}
+                    >
+                      <span className={`text-[9px] font-extrabold uppercase tracking-widest mb-[2px] transition-colors ${isSelected ? 'text-[#0A0C0E]/70' : 'text-[#666]'}`}>{d.toLocaleString('default', { weekday: 'short' })}</span>
+                      <span className={`text-[17px] font-bold font-heading leading-none transition-colors ${isSelected ? 'text-[#0A0C0E]' : 'text-white'}`}>{d.getDate()}</span>
+                    </button>
+                  )
+                })}
+             </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function HistoryPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
   
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
-  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'quarter' | 'custom'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'quarter' | 'custom' | 'exact_date'>('all');
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -92,6 +217,9 @@ export default function HistoryPage() {
       if (!customStart || !customEnd) return true;
       return txDate >= new Date(customStart) && txDate <= new Date(customEnd);
     }
+    if (timeFilter === 'exact_date') {
+      return txDate.toDateString() === selectedDate.toDateString();
+    }
     return true;
   }
 
@@ -103,10 +231,10 @@ export default function HistoryPage() {
   const totalFiltered = filteredData.reduce((acc: number, tx: any) => acc + (tx.type === 'expense' ? -tx.amount : tx.amount), 0);
 
   return (
-    <div className="p-5 md:p-10 space-y-6 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto">
-      <header className="pt-2">
+    <div className="px-4 py-3 md:p-8 space-y-4 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto">
+      <header>
         <h1 className="font-heading text-2xl font-bold  text-foreground">History</h1>
-        <p className="text-xs text-muted-foreground  uppercase mt-0.5">Your complete transaction log</p>
+        <p className="text-[11px] text-muted-foreground uppercase mt-0.5 tracking-wider">Your complete transaction log</p>
       </header>
 
       {/* Primary Type Filters */}
@@ -138,6 +266,17 @@ export default function HistoryPage() {
             {f === 'all' ? 'All Time' : f === 'week' ? 'Past 7 Days' : f === 'month' ? 'This Month' : f === 'quarter' ? 'Past 3 Months' : 'Custom'}
           </button>
         ))}
+      </div>
+
+      {/* Date Selector - Always Visible */}
+      <div className="animate-in fade-in duration-300">
+        <HorizontalDateSelector 
+          selectedDate={selectedDate} 
+          onDateChange={(d) => {
+            setSelectedDate(d);
+            setTimeFilter('exact_date');
+          }} 
+        />
       </div>
       
       {/* Custom Date Inputs */}

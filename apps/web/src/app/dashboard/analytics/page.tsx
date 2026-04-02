@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, PieChart as PieChartIcon, TrendingUp, TrendingDown, Calendar, Wallet, MapPin, Target } from "lucide-react";
+import { Loader2, PieChart as PieChartIcon, TrendingUp, TrendingDown, Calendar, Wallet, MapPin, Target, ChevronDown } from "lucide-react";
 import api from "@/lib/api";
 import { useState, useEffect } from "react";
 import { formatDateIST, IST_TIMEZONE } from "@/lib/dateUtils";
@@ -17,6 +17,7 @@ export default function AnalyticsPage() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -93,7 +94,7 @@ export default function AnalyticsPage() {
   let totalIncome = 0;
   let totalExpense = 0;
   
-  const categoryExpenses: Record<string, { value: number, color: string }> = {};
+  const categoryExpenses: Record<string, { value: number, color: string, subcategories: Record<string, number> }> = {};
   const timelineDataMap: Record<string, { name: string, income: number, expense: number, dateMs: number }> = {};
   const locationsMap: Record<string, number> = {};
 
@@ -116,8 +117,16 @@ export default function AnalyticsPage() {
       // Category aggregation
       const catName = tx.category?.name || 'Other';
       const catColor = tx.category?.color || '#ff716c';
-      if (!categoryExpenses[catName]) categoryExpenses[catName] = { value: 0, color: catColor };
+      if (!categoryExpenses[catName]) {
+        categoryExpenses[catName] = { value: 0, color: catColor, subcategories: {} };
+      }
       categoryExpenses[catName].value += amt;
+
+      // Subcategory aggregation
+      const subCatId = tx.subcategory;
+      const subCat = (tx.category?.subcategories || []).find((s: any) => s._id === subCatId);
+      const subCatName = subCat ? subCat.name : 'Uncategorized';
+      categoryExpenses[catName].subcategories[subCatName] = (categoryExpenses[catName].subcategories[subCatName] || 0) + amt;
 
       // Location aggregation
       if (tx.location && tx.location.address) {
@@ -260,14 +269,39 @@ export default function AnalyticsPage() {
             )}
           </div>
           
-          <div className="flex flex-col gap-2 mt-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
-            {pieData.map((entry, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: entry.color }}></div>
-                <span className="text-xs text-foreground truncate">{entry.name}</span>
-                <span className="text-xs font-bold font-mono ml-auto">₹{entry.value.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
+          <div className="flex flex-col gap-2 mt-2 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
+            {pieData.map((entry, index) => {
+              const isExpanded = expandedCategory === entry.name;
+              return (
+              <div key={index} className="flex flex-col">
+                <button 
+                  onClick={() => setExpandedCategory(isExpanded ? null : entry.name)}
+                  className="flex items-center gap-3 w-full hover:bg-accent/50 p-2 rounded-xl transition-all duration-200 group/item text-left"
+                >
+                  <div className="w-3 h-3 rounded-full shrink-0 shadow-sm" style={{ backgroundColor: entry.color }}></div>
+                  <span className="text-xs font-medium text-foreground truncate flex-1">{entry.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold font-mono text-foreground/90">₹{entry.value.toLocaleString('en-IN', {maximumFractionDigits: 0})}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground/50 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-primary' : ''}`} />
+                  </div>
+                </button>
+                
+                {isExpanded && (
+                  <div className="pl-8 pr-2 py-2 flex flex-col gap-2 border-l-2 ml-1.5 border-primary/20 animate-in slide-in-from-top-1 duration-300">
+                    {Object.entries(categoryExpenses[entry.name].subcategories)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([subName, subVal]) => (
+                      <div key={subName} className="flex justify-between items-center group/sub">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">{subName}</span>
+                        <span className="text-[11px] font-mono font-medium text-foreground/70 group-hover/sub:text-primary transition-colors">
+                          ₹{subVal.toLocaleString('en-IN', {maximumFractionDigits: 0})}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            ))}
+            )})}
           </div>
         </section>
 

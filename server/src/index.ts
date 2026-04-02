@@ -15,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 app.get("/", (req, res) => {
-  res.send("Lumina API is running...");
+  res.send("Wealthy API is running...");
 });
 
 app.use("/api/auth", authRoutes);

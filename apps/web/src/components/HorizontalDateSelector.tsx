@@ -36,14 +36,23 @@ export default function HorizontalDateSelector({
   const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
   const allDays = Array.from({ length: daysInMonth }, (_, i) => new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i + 1));
   
-  // Group by Week (7 day max per week group)
-  const weeks: { weekNum: number, days: Date[] }[] = [];
-  for (let i = 0; i < allDays.length; i += 7) {
-    weeks.push({
-      weekNum: Math.floor(i / 7) + 1,
-      days: allDays.slice(i, i + 7)
-    });
-  }
+  // Group by Week (Mon-Sun calendar alignment)
+  const weeks: { weekNum: number; days: Date[] }[] = [];
+  let currentWeekDays: Date[] = [];
+  let weekCounter = 1;
+
+  allDays.forEach((day, index) => {
+    currentWeekDays.push(day);
+    // JS getDay(): 0 is Sunday. 
+    // If it's Sunday OR the last day of the month, finalize the week group.
+    if (day.getDay() === 0 || index === allDays.length - 1) {
+      weeks.push({
+        weekNum: weekCounter++,
+        days: currentWeekDays,
+      });
+      currentWeekDays = [];
+    }
+  });
 
   const resetToToday = () => {
     const today = new Date();
@@ -88,7 +97,7 @@ export default function HorizontalDateSelector({
              </div>
              {/* Months List */}
              <div className="flex items-center px-4 gap-6 bg-transparent">
-                {[...group.months].reverse().map(m => {
+                {group.months.map(m => {
                   const isSelected = m.getMonth() === currentMonth.getMonth() && m.getFullYear() === currentMonth.getFullYear();
                   const mId = `month-${m.getFullYear()}-${m.getMonth()}`;
                   return (

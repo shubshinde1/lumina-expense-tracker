@@ -58,8 +58,8 @@ export default function BottomNav() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 h-20 bg-card/80 backdrop-blur-xl border-t border-border z-50 px-6 pb-safe">
       <ul className="flex items-center justify-between h-full max-w-md mx-auto relative cursor-default">
-        <NavItem href="/dashboard" icon={<Home />} label="Home" active={pathname === "/dashboard"} />
-        <NavItem href="/dashboard/analytics" icon={<PieChart />} label="Analytics" active={pathname === "/dashboard/analytics"} />
+        <NavItem href="/dashboard" icon={<Home />} label="Home" active={pathname === "/dashboard" || pathname === "/dashboard/"} />
+        <NavItem href="/dashboard/analytics" icon={<PieChart />} label="Analytics" active={pathname.startsWith("/dashboard/analytics")} />
 
         {/* Center Floating Action Button (FAB) with Drag & Drop System */}
         <li className="relative -top-6 group z-50">

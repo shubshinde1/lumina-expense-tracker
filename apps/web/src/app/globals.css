@@ -61,27 +61,38 @@
 }
 
 :root {
-  /* Default light mode mapped to deep dark for this aesthetic or true light mode if needed. Let's make it light mode here, and dark mode for default app. */
-  --background: #f8fafc;
-  --foreground: #020817;
+  /* Premium Light Mode / Fintech Aesthetic */
+  --background: #ffffff;
+  --foreground: #09090b;
   --card: #ffffff;
-  --card-foreground: #020817;
+  --card-foreground: #09090b;
   --popover: #ffffff;
-  --popover-foreground: #020817;
-  --primary: #1fc46a;
+  --popover-foreground: #09090b;
+  --primary: #10b981; /* Emerald 500 */
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #e2e8f0;
-  --accent-foreground: #0f172a;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
   --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #1fc46a;
+  --destructive-foreground: #fafafa;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #10b981;
   --radius: 1rem;
+
+  /* Surface Container Tokens for Light Mode */
+  --color-surface-container-high: #f4f4f5;
+  --color-surface-container-low: #fafafa;
+  --color-surface-container-highest: #e4e4e7;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-bright: #ffffff;
+  --color-on-surface-variant: #71717a;
+  --color-outline-variant: #e4e4e7;
+  --color-primary-container: #d1fae5;
+  --color-on-primary-container: #065f46;
 }
 
 .dark {

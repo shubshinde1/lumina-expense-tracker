@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { formatDateIST, formatTimeIST, getTodayIST, getYesterdayIST, isSameDayIST, getStartOfMonthIST } from "@/lib/dateUtils";
+import HorizontalDateSelector from "@/components/HorizontalDateSelector";
 
 function groupByDate(transactions: any[]) {
   const groupsMap = new Map<string, any[]>();
@@ -19,14 +20,10 @@ function groupByDate(transactions: any[]) {
   const yesterdayStr = getYesterdayIST();
 
   sortedTransactions.forEach((tx) => {
-    const txDateStr = formatDateIST(tx.date, { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-'); // Helper needed or just use separate components
-    // Actually, let's just use isSameDayIST against getTodayIST equivalents
-    
-    let label: string;
-    
     // Simpler way:
     const txGroupDate = new Date(tx.date).toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
     
+    let label: string;
     if (txGroupDate === todayStr) label = 'Today';
     else if (txGroupDate === yesterdayStr) label = 'Yesterday';
     else label = formatDateIST(tx.date, { day: 'numeric', month: 'long', year: 'numeric' });
@@ -35,138 +32,7 @@ function groupByDate(transactions: any[]) {
     groupsMap.get(label)!.push(tx);
   });
   
-  // Convert Map to Array to strictly preserve chronological insertion order
   return Array.from(groupsMap.entries()).map(([dateLabel, txs]) => ({ dateLabel, txs }));
-}
-
-function HorizontalDateSelector({ 
-  selectedDate, 
-  onDateChange 
-}: { 
-  selectedDate: Date, 
-  onDateChange: (d: Date) => void 
-}) {
-  const [currentMonth, setCurrentMonth] = useState(getStartOfMonthIST(selectedDate));
-
-  // Generate past 24 months for nice scrolling
-  const today = new Date();
-  const pastMonths = Array.from({length: 24}, (_, i) => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - i);
-    return getStartOfMonthIST(d);
-  });
-  
-  // Group by Year
-  const monthsByYear: { year: number, months: Date[] }[] = [];
-  pastMonths.forEach(m => {
-    let group = monthsByYear.find(g => g.year === m.getFullYear());
-    if (!group) {
-      group = { year: m.getFullYear(), months: [] };
-      monthsByYear.push(group);
-    }
-    group.months.push(m);
-  });
-
-  const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-  const allDays = Array.from({ length: daysInMonth }, (_, i) => new Date(currentMonth.getFullYear(), currentMonth.getMonth(), i + 1));
-  
-  // Group by Week (7 day max per week group)
-  const weeks: { weekNum: number, days: Date[] }[] = [];
-  for (let i = 0; i < allDays.length; i += 7) {
-    weeks.push({
-      weekNum: Math.floor(i / 7) + 1,
-      days: allDays.slice(i, i + 7)
-    });
-  }
-
-  return (
-    <div className="flex flex-col rounded-3xl bg-[#0A0C0E] border border-[#161B18] overflow-hidden select-none w-full shadow-lg relative">
-      
-      {/* Reset To Today Button centered on the sticky border and section line */}
-       <button 
-          onClick={() => {
-            const today = new Date();
-            setCurrentMonth(getStartOfMonthIST(today));
-            onDateChange(today);
-            
-            setTimeout(() => {
-              document.getElementById('months-scroll')?.scrollTo({ left: 0, behavior: 'smooth' });
-              const dayId = `day-${new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric' }).format(today)}`;
-              document.getElementById(dayId)?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            }, 50);
-          }}
-         className="absolute left-[48px] -translate-x-1/2 top-[55px] -translate-y-1/2 w-7 h-7 rounded-full bg-[#181A1E] border-[1.5px] border-[#2A2D35] flex items-center justify-center z-30 text-[#888] hover:text-[#4ADE80] hover:rotate-180 transition-all duration-300 shadow-[0_4px_10px_rgba(0,0,0,0.6)] cursor-pointer"
-         title="Go to Today"
-      >
-         <RotateCcw className="w-3.5 h-3.5" />
-      </button>
-
-      {/* Top Row: Year & Months Continuous Scroll */}
-      <div id="months-scroll" className="flex items-stretch h-[55px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {monthsByYear.map((group) => (
-          <div key={group.year} className="flex shrink-0">
-             {/* Sticky Year Label */}
-             <div className="sticky left-0 w-[48px] bg-[#0C120E] flex items-center justify-center shrink-0 z-20 border-r border-[#161B18]">
-               <span className="leading-none text-[11px] font-bold text-[#4ADE80] -rotate-90 tracking-[0.2em]">{group.year}</span>
-             </div>
-             {/* Months List for the Year */}
-             <div className="flex items-center px-5 gap-8 bg-[#0A0C0E]">
-                {group.months.map(m => {
-                  const isSelected = m.getMonth() === currentMonth.getMonth() && m.getFullYear() === currentMonth.getFullYear();
-                  return (
-                    <button 
-                      id={`month-${m.getFullYear()}-${m.getMonth()}`}
-                      key={m.getMonth()}
-                      onClick={() => setCurrentMonth(m)}
-                      className={`text-[15px] transition-all shrink-0 ${isSelected ? 'text-white font-bold' : 'text-[#666] font-semibold hover:text-white/80'}`}
-                    >
-                      {m.toLocaleString('default', { month: 'short' })}
-                    </button>
-                  )
-                })}
-             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Explicit Horizontal Section Divider */}
-      <div className="w-full h-[1px] bg-[#161B18] shrink-0 z-10" />
-
-      {/* Bottom Row: Weeks & Days Continuous Scroll */}
-      <div id="days-scroll" className="flex items-stretch h-[68px] overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        {weeks.map((group) => (
-          <div key={group.weekNum} className="flex shrink-0">
-             {/* Sticky Week Label */}
-             <div className="sticky left-0 w-[48px] bg-[#0C120E] flex items-center justify-center shrink-0 z-20 border-r border-[#161B18]">
-               <span className="text-[9px] font-bold text-[#4ADE80] -rotate-90 tracking-[0.1em] whitespace-nowrap uppercase">Week {group.weekNum}</span>
-             </div>
-             {/* Days List for the Week */}
-             <div className="flex items-center px-4 gap-3 bg-[#0A0C0E]">
-                {group.days.map(d => {
-                  const isSelected = isSameDayIST(d, selectedDate);
-                  const dayNum = d.toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric' });
-                  return (
-                    <button
-                      id={`day-${dayNum}`}
-                      key={dayNum}
-                      onClick={() => onDateChange(d)}
-                      className={`w-[50px] h-[52px] rounded-[16px] flex flex-col items-center justify-center shrink-0 transition-all ${
-                        isSelected 
-                          ? 'bg-[#4ADE80] shadow-[0_0_15px_rgba(74,222,128,0.2)] ring-[1.5px] ring-white/90 scale-100' 
-                          : 'bg-[#181A1E] hover:bg-[#202328]'
-                      }`}
-                    >
-                      <span className={`text-[9px] font-extrabold uppercase tracking-widest mb-[2px] transition-colors ${isSelected ? 'text-[#0A0C0E]/70' : 'text-[#666]'}`}>{d.toLocaleString('default', { weekday: 'short', timeZone: 'Asia/Kolkata' })}</span>
-                      <span className={`text-[17px] font-bold font-heading leading-none transition-colors ${isSelected ? 'text-[#0A0C0E]' : 'text-white'}`}>{dayNum}</span>
-                    </button>
-                  )
-                })}
-             </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 export default function HistoryPage() {
@@ -230,7 +96,7 @@ export default function HistoryPage() {
       return txDate >= new Date(customStart) && txDate <= new Date(customEnd);
     }
     if (timeFilter === 'exact_date') {
-      return txDate.toDateString() === selectedDate.toDateString();
+      return isSameDayIST(txDate, selectedDate);
     }
     return true;
   }
@@ -250,12 +116,12 @@ export default function HistoryPage() {
       </header>
 
       {/* Primary Type Filters */}
-      <div className="flex gap-2 p-1 bg-card rounded-2xl border border-border w-fit overflow-x-auto max-w-full">
+      <div className="flex gap-1 p-1 bg-card rounded-2xl border border-border w-full">
         {(['all', 'income', 'expense'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold uppercase  transition-all ${filter === f
+            className={`flex-1 px-4 py-2 rounded-xl text-xs font-bold uppercase transition-all ${filter === f
                 ? f === 'income' ? 'bg-primary/10 text-primary'
                   : f === 'expense' ? 'bg-destructive/10 text-destructive'
                     : 'bg-accent text-foreground'
@@ -268,19 +134,19 @@ export default function HistoryPage() {
       </div>
       
       {/* Time Filters */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap pb-1">
         {(['all', 'week', 'month', 'quarter', 'custom'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setTimeFilter(f)}
-            className={`px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase  transition-all ${timeFilter === f ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-muted-foreground/70 border-border hover:bg-accent'}`}
+            className={`px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase transition-all shrink-0 ${timeFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-card text-muted-foreground/70 border-border hover:bg-accent'}`}
           >
             {f === 'all' ? 'All Time' : f === 'week' ? 'Past 7 Days' : f === 'month' ? 'This Month' : f === 'quarter' ? 'Past 3 Months' : 'Custom'}
           </button>
         ))}
       </div>
 
-      {/* Date Selector - Always Visible */}
+      {/* Date Selector - Standards Cross-Page Component */}
       <div className="animate-in fade-in duration-300">
         <HorizontalDateSelector 
           selectedDate={selectedDate} 
@@ -390,7 +256,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
   const [startX, setStartX] = useState(0);
 
   const handleTouchStart = (e: React.TouchEvent) => {
-    // Start measuring from current position (0 or -140)
     setStartX(e.touches[0].clientX - dragX);
     setIsDragging(true);
   };
@@ -400,7 +265,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
     const currentX = e.touches[0].clientX;
     const dx = currentX - startX;
     
-    // Restrict dragging to RTL (negative values only), max 140px width for 2 buttons
     if (dx > 0) setDragX(0);
     else if (dx < -140) setDragX(-140);
     else setDragX(dx);
@@ -408,7 +272,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
 
   const handleTouchEnd = () => {
     setIsDragging(false);
-    // Snap open if dragged past halfway point
     if (dragX < -70) {
       setDragX(-140);
     } else {
@@ -416,7 +279,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
     }
   };
 
-  // Close swipe if clicking on the main card body while it's open
   const handleCardClick = (e: React.MouseEvent) => {
     if (dragX === -140) {
       e.stopPropagation();
@@ -426,7 +288,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-3 md:mb-2 bg-card border border-border">
-      {/* Action Drawer (Revealed from Right) */}
       <div className="absolute inset-y-0 right-0 flex items-center justify-end w-[140px]" style={{ zIndex: 0 }}>
         <button 
           onClick={(e) => { e.preventDefault(); onEdit(); }} 
@@ -444,7 +305,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
         </button>
       </div>
       
-      {/* Foreground Card */}
       <div 
         onClick={handleCardClick}
         onTouchStart={handleTouchStart}
@@ -489,7 +349,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
             </p>
             {(() => {
               const mode = tx.paymentMode || 'UPI';
-              let colorClasses = "bg-indigo-500/10 text-indigo-500"; // UPI default
+              let colorClasses = "bg-indigo-500/10 text-indigo-500"; 
               let Icon = QrCode;
               if (mode === 'Cash') { colorClasses = "bg-emerald-500/10 text-emerald-500"; Icon = Banknote; }
               else if (mode === 'Net Banking') { colorClasses = "bg-blue-500/10 text-blue-500"; Icon = Building2; }
@@ -505,7 +365,6 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
             })()}
           </div>
 
-          {/* Hidden on mobile, completely relying on swipe. Only appears on Desktop hover. */}
           <div className="hidden md:flex items-center gap-1 bg-accent rounded-full opacity-0 group-hover:opacity-100 transition-opacity p-1">
               <button
                 onClick={(e) => { e.preventDefault(); onEdit(); }}
@@ -523,5 +382,5 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
         </div>
       </div>
     </div>
-  )
+  );
 }

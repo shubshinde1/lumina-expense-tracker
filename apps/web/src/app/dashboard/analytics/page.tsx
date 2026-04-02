@@ -10,11 +10,13 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   AreaChart, Area 
 } from "recharts";
+import HorizontalDateSelector from "@/components/HorizontalDateSelector";
 
 export default function AnalyticsPage() {
-  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom'>('all');
+  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'quarter' | 'year' | 'custom' | 'exact_date'>('all');
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
@@ -50,6 +52,11 @@ export default function AnalyticsPage() {
     const txISTString = txDate.toLocaleDateString('en-CA', { timeZone: IST_TIMEZONE });
     const txISTDate = new Date(txISTString);
     
+    if (timeFilter === 'exact_date') {
+       const selISTString = selectedDate.toLocaleDateString('en-CA', { timeZone: IST_TIMEZONE });
+       return txISTString === selISTString;
+    }
+
     const nowISTString = new Date().toLocaleDateString('en-CA', { timeZone: IST_TIMEZONE });
     const nowISTDate = new Date(nowISTString);
     
@@ -59,14 +66,9 @@ export default function AnalyticsPage() {
       return txISTDate >= weekAgo;
     }
     if (timeFilter === 'month') {
-       const today = new Date();
-       const currentMonth = today.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, month: 'numeric' });
-       const currentYear = today.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
-       
-       const txMonth = txDate.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, month: 'numeric' });
-       const txYear = txDate.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
-       
-       return txMonth === currentMonth && txYear === currentYear;
+       const currentMonth = nowISTDate.getMonth();
+       const currentYear = nowISTDate.getFullYear();
+       return txISTDate.getMonth() === currentMonth && txISTDate.getFullYear() === currentYear;
     }
     if (timeFilter === 'quarter') {
       const quarterAgo = new Date(nowISTDate);
@@ -74,9 +76,7 @@ export default function AnalyticsPage() {
       return txISTDate >= quarterAgo;
     }
     if (timeFilter === 'year') {
-      const currentYear = new Date().toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
-      const txYear = txDate.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' });
-      return txYear === currentYear;
+      return txISTDate.getFullYear() === nowISTDate.getFullYear();
     }
     if (timeFilter === 'custom') {
       if (!customStart || !customEnd) return true;
@@ -141,8 +141,8 @@ export default function AnalyticsPage() {
     .sort((a,b) => b.amount - a.amount).slice(0, 5);
 
   return (
-    <div className="p-5 md:p-10 space-y-6 animate-in fade-in duration-500 pb-32 overflow-hidden max-w-7xl mx-auto">
-      <header className="flex items-center justify-between pt-2">
+    <div className="px-4 py-3 md:p-8 space-y-4 animate-in fade-in duration-500 pb-32 overflow-hidden max-w-7xl mx-auto">
+      <header className="flex items-center justify-between pt-1">
         <div>
           <h1 className="font-heading text-2xl font-bold  text-foreground">Analytics</h1>
           <p className="text-xs text-muted-foreground  uppercase mt-0.5">Deep financial intelligence</p>
@@ -152,18 +152,29 @@ export default function AnalyticsPage() {
         </div>
       </header>
 
-      {/* Time Filters */}
-      <div className="flex gap-2 flex-wrap">
-        {(['all', 'week', 'month', 'quarter', 'year', 'custom'] as const).map((f) => (
+      {/* Time Filters Secondary Bar */}
+      <div className="flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap pb-1">
+        {(['all', 'week', 'month', 'year', 'custom'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setTimeFilter(f)}
-            className={`px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase  transition-all ${timeFilter === f ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-muted-foreground/70 border-border hover:bg-accent'}`}
+            className={`px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase transition-all shrink-0 ${timeFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-card text-muted-foreground/70 border-border hover:bg-accent'}`}
           >
-            {f === 'all' ? 'All Time' : f === 'week' ? 'Past 7 Days' : f === 'month' ? 'This Month' : f === 'quarter' ? 'Past 3 Months' : f === 'year' ? 'This Year' : 'Custom'}
+            {f === 'all' ? 'All Time' : f === 'week' ? 'Past 7 Days' : f === 'month' ? 'This Month' : f === 'year' ? 'This Year' : 'Custom'}
           </button>
         ))}
       </div>
+
+      {/* Modern Date Selection (Standardized) - Always Visible */}
+      <section className="animate-in slide-in-from-top-2 fade-in duration-700">
+         <HorizontalDateSelector 
+          selectedDate={selectedDate} 
+          onDateChange={(d) => {
+            setSelectedDate(d);
+            setTimeFilter('exact_date');
+          }} 
+         />
+      </section>
       
       {/* Custom Date Inputs */}
       {timeFilter === 'custom' && (

@@ -72,7 +72,7 @@ export default function DashboardPage() {
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Status: Online</p>
           <h1 className="font-heading text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            {getGreeting()}, <span className="text-primary italic">{firstName}</span>
+            {getGreeting()}, <span className="text-primary">{firstName}</span>
           </h1>
         </div>
         <div className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm overflow-hidden relative group cursor-pointer ring-1 ring-border/50">
@@ -82,14 +82,14 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Stats Card */}
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0e] p-8 text-white border border-white/5 shadow-2xl">
+      <section className="relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0e] dark:bg-card p-8 text-white border border-white/5 shadow-2xl">
         <div className="absolute top-0 right-0 p-8 opacity-10">
           <Wallet className="w-32 h-32 rotate-12" />
         </div>
         
         <div className="relative space-y-6">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40 mb-3 ml-1">Total Liquidity</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-3 ml-1">Total Liquidity</p>
             <div className="flex items-baseline gap-2">
               <span className="text-2xl font-light text-white/50">₹</span>
               <h2 className="text-5xl md:text-6xl font-heading font-black tracking-tighter">
@@ -99,20 +99,20 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-4 pt-4">
-            <div className="bg-white/[0.03] rounded-3xl p-5 border border-white/5 hover:bg-white/[0.05] transition-colors group">
+            <div className="bg-white/[0.04] rounded-3xl p-5 border border-white/5 hover:bg-white/[0.08] transition-colors group">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 rounded-xl bg-[#1fc46a]/10 text-[#1fc46a] group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-xl bg-primary/20 text-primary group-hover:scale-110 transition-transform">
                   <ArrowDownRight className="w-4 h-4" />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Inflow</span>
               </div>
-              <p className="text-lg font-heading font-bold tracking-tight text-[#1fc46a]">
+              <p className="text-lg font-heading font-bold tracking-tight text-primary">
                 ₹{income.toLocaleString('en-IN')}
               </p>
             </div>
-            <div className="bg-white/[0.03] rounded-3xl p-5 border border-white/5 hover:bg-white/[0.05] transition-colors group">
+            <div className="bg-white/[0.04] rounded-3xl p-5 border border-white/5 hover:bg-white/[0.08] transition-colors group">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 rounded-xl bg-destructive/10 text-destructive group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-xl bg-destructive/20 text-destructive group-hover:scale-110 transition-transform">
                   <ArrowUpRight className="w-4 h-4" />
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Outflow</span>
@@ -137,13 +137,13 @@ export default function DashboardPage() {
             <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-3 group-hover:rotate-12 transition-transform shadow-inner">
                <PieChart className="w-6 h-6" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">Insights</span>
+            <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">Analytics</span>
          </Link>
          <Link href="/dashboard/categories" className="flex flex-col items-center justify-center p-5 rounded-3xl bg-card border border-border hover:bg-accent/50 transition-all group shadow-sm active:scale-95">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-3 group-hover:rotate-12 transition-transform shadow-inner">
                <LayoutList className="w-6 h-6" />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">Nodes</span>
+            <span className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">Categories</span>
          </Link>
       </div>
 

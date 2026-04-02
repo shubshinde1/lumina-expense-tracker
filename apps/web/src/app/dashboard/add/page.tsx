@@ -159,9 +159,14 @@ function AddTransactionForm() {
 
           {/* Category Selector */}
           <div className="group relative">
-            <label className="block font-medium text-xs text-muted-foreground mb-3  uppercase">
-              Category
-            </label>
+            <div className="flex items-center justify-between mb-3">
+              <label className="block font-medium text-xs text-muted-foreground uppercase">
+                Category
+              </label>
+              <Link href="/dashboard/categories" className="text-[10px] font-bold text-primary flex items-center gap-1 px-2 py-1 bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors uppercase tracking-wider">
+                Manage
+              </Link>
+            </div>
             {isLoadingCats ? (
               <div className="h-14 flex items-center justify-center bg-accent rounded-xl"><Loader2 className="animate-spin text-muted-foreground" /></div>
             ) : (

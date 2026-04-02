@@ -83,6 +83,19 @@ export function toLocalDateTimeLocal(date: Date | string) {
 }
 
 /**
+ * Converts a string from <input type="datetime-local"> (assumed to be in IST)
+ * into a UTC Date object. This ensures server timezone (e.g. Oregon) doesn't corrupt the time.
+ */
+export function fromLocalDateTimeLocal(dateTimeStr: string) {
+  if (!dateTimeStr) return new Date();
+  
+  // IST is UTC+5:30. We append the offset so the Date constructor 
+  // treats the input as an absolute moment in IST correctly.
+  // Input: "2024-04-02T17:40" -> Output: Date object representing that moment in IST.
+  return new Date(dateTimeStr + ":00+05:30");
+}
+
+/**
  * Checks if two dates are the same day in IST.
  */
 export function isSameDayIST(d1: Date | string, d2: Date | string) {
@@ -99,7 +112,7 @@ export function isSameDayIST(d1: Date | string, d2: Date | string) {
  * Returns a new Date object representing the start of the current month in IST.
  */
 export function getStartOfMonthIST(date: Date = new Date()) {
-  const year = parseInt(date.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, year: 'numeric' }));
-  const month = parseInt(date.toLocaleDateString('en-IN', { timeZone: IST_TIMEZONE, month: 'numeric' })) - 1;
-  return new Date(year, month, 1);
+  const IST_String = date.toLocaleString('en-US', { timeZone: IST_TIMEZONE });
+  const IST_Date = new Date(IST_String);
+  return new Date(IST_Date.getFullYear(), IST_Date.getMonth(), 1);
 }

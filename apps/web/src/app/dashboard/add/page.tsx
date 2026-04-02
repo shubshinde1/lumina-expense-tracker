@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
-import { toLocalDateTimeLocal } from "@/lib/dateUtils";
+import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 
 function AddTransactionForm() {
   const router = useRouter();
@@ -89,7 +89,7 @@ function AddTransactionForm() {
       type,
       amount: Number(amount),
       description,
-      date,
+      date: fromLocalDateTimeLocal(date).toISOString(),
       category: categoryId,
       subcategory: subcategoryId || undefined,
       location: locationObj || undefined,

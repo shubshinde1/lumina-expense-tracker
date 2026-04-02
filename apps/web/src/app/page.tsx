@@ -80,7 +80,7 @@ export default function AuthPage() {
           <Fingerprint className="text-primary w-8 h-8" strokeWidth={1.5} />
         </div>
         <h1 className="font-heading text-4xl md:text-5xl font-bold text-foreground mb-2">
-          Lumina
+          Wealthy
         </h1>
         <p className="text-muted-foreground text-sm uppercase tracking-widest">Enter the ethereal ledger</p>
       </header>

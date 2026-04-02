@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
@@ -9,9 +10,17 @@ import api from "@/lib/api";
 import { toLocalDateTimeLocal } from "@/lib/dateUtils";
 
 export default function EditTransactionPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>}>
+      <EditContent />
+    </Suspense>
+  );
+}
+
+function EditContent() {
   const router = useRouter();
-  const params = useParams();
-  const id = params?.id as string;
+  const searchParams = useSearchParams();
+  const id = searchParams.get('id');
   const queryClient = useQueryClient();
 
   // Selected State
@@ -118,6 +127,8 @@ export default function EditTransactionPage() {
       paymentMode,
     });
   };
+
+  if (!id) return <div className="p-12 text-center text-muted-foreground">Error: No ID Provided</div>;
 
   if (isLoadingTx) {
     return <div className="p-12 text-center text-muted-foreground"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>;

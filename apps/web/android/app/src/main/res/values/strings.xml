@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Wealthy</string>
+    <string name="title_activity_main">Wealthy</string>
+    <string name="package_name">com.lumina.tracker</string>
+    <string name="custom_url_scheme">com.lumina.tracker</string>
+</resources>

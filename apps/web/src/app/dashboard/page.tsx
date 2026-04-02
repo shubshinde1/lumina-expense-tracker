@@ -195,7 +195,7 @@ export default function DashboardPage() {
                   : null;
 
                 return (
-                <div key={tx._id} onClick={() => router.push(`/dashboard/edit/${tx._id}`)} className="flex items-center justify-between p-3 rounded-2xl hover:bg-accent/60 transition-colors cursor-pointer group">
+                <div key={tx._id} onClick={() => router.push(`/dashboard/edit?id=${tx._id}`)} className="flex items-center justify-between p-3 rounded-2xl hover:bg-accent/60 transition-colors cursor-pointer group">
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div
                       className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0"

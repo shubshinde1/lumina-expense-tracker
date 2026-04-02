@@ -8,9 +8,8 @@ const outfit = Outfit({ subsets: ["latin"], variable: "--font-heading" });
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Lumina | Expense Tracker",
+  title: "Wealthy",
   description: "Secure and elegant expense tracking.",
-  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

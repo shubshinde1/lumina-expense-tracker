@@ -15,19 +15,19 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
     transporter = nodemailer.createTransport({
       host: smtpHost,
       port: smtpPort,
-      secure: smtpPort === 465, // true for 465, false for other ports (587/25)
+      secure: smtpPort === 465, // Use SSL for 465, STARTTLS for 587
       auth: { 
         user: smtpUser, 
         pass: smtpPass 
       },
       // Timeouts are critical for cloud hosting like Render to prevent hanging requests
-      connectionTimeout: 10000, // 10 seconds to connect
-      greetingTimeout: 10000,   // 10 seconds to wait for greeting
-      socketTimeout: 15000,     // 15 seconds of inactivity
+      connectionTimeout: 15000, // 15 seconds to connect
+      greetingTimeout: 15000,   // 15 seconds to wait for greeting
+      socketTimeout: 20000,     // 20 seconds of inactivity
       // Some providers/hosting services (like Render/DigitalOcean) have issues with STARTTLS/Certificates
       tls: {
         rejectUnauthorized: false, // Helps with some self-signed certificate issues or older SMTP relays
-        ciphers: 'SSLv3' // Sometimes needed for legacy compatibility
+        minVersion: 'TLSv1.2'      // Zoho requires at least TLS v1.2
       }
     });
 

@@ -1,60 +1,12 @@
 import nodemailer from "nodemailer";
 
+// Render blocks standard SMTP ports (465/587). 
+// Using an API like Resend is the ONLY reliable way to send mail from Render.
 export const sendOtpEmail = async (email: string, otp: string, type: "register" | "reset") => {
-  const isProd = process.env.NODE_ENV === "production";
-  let transporter;
-
-  const smtpHost = process.env.SMTP_HOST;
+  const resendApiKey = process.env.RESEND_API_KEY;
   const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpPort = Number(process.env.SMTP_PORT) || 587;
-
-  // Use real credentials if provided, otherwise fallback to Ethereal (Development Mock)
-  if (smtpHost && smtpUser) {
-    console.log(`📡 SMTP: Attempting to connect to ${smtpHost}:${smtpPort}...`);
-    transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465, // Use SSL for 465, STARTTLS for 587
-      auth: { 
-        user: smtpUser, 
-        pass: smtpPass 
-      },
-      // Timeouts are critical for cloud hosting like Render to prevent hanging requests
-      connectionTimeout: 15000, // 15 seconds to connect
-      greetingTimeout: 15000,   // 15 seconds to wait for greeting
-      socketTimeout: 20000,     // 20 seconds of inactivity
-      // Some providers/hosting services (like Render/DigitalOcean) have issues with STARTTLS/Certificates
-      tls: {
-        rejectUnauthorized: false, // Helps with some self-signed certificate issues or older SMTP relays
-        minVersion: 'TLSv1.2'      // Zoho requires at least TLS v1.2
-      }
-    });
-
-    // Verification check to catch config errors early in production logs
-    try {
-      await (transporter as any).verify();
-      console.log("✅ SMTP Connection Verified successfully.");
-    } catch (vError: any) {
-      console.error("❌ SMTP Verification Failed - Check your Render Env Vars! Error:", vError.message);
-      // We don't throw here yet to allow the sendMail attempt which might provide more detail
-    }
-
-  } else {
-    // Development Mock Mail (Ethereal)
-    console.log("🛠️  SMTP_HOST not found. Using Ethereal Mock Mailer...");
-    const testAccount = await nodemailer.createTestAccount();
-    transporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: { user: testAccount.user, pass: testAccount.pass },
-    });
-  }
-
-  const subject = type === "register" ? "Lumina: Verify Your Registration" : "Lumina: Reset Your Password";
   
-  // High-end premium template focused on the Lumina Brand
+  const subject = type === "register" ? "Lumina: Verify Your Registration" : "Lumina: Reset Your Password";
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 40px; background: #09090b; color: #ffffff; border-radius: 16px; border: 1px solid #27272a; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #6bfe9c; letter-spacing: 3px; font-weight: 800; text-shadow: 0 0 20px rgba(107, 254, 156, 0.2);">LUMINA</h2>
@@ -66,12 +18,62 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
       </div>
       
       <p style="color: #ef4444; font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Expiring in 2 minutes</p>
-      
-      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #27272a; color: #71717a; font-size: 12px;">
-        Secure transaction management by Lumina.
-      </div>
     </div>
   `;
+
+  // METHOD 1: Resend API (Recommended for Render)
+  if (resendApiKey) {
+    console.log("🚀 Sending via Resend API...");
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${resendApiKey}`,
+        },
+        body: JSON.stringify({
+          from: "Lumina Security <onboarding@resend.dev>", // Once you verify domain, use your email
+          to: [email],
+          subject,
+          html,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Resend API Error");
+      
+      console.log("✅ Email sent successfully via Resend API");
+      return data;
+    } catch (err: any) {
+      console.error("❌ Resend API Failed:", err.message);
+      // Fallback to SMTP if Resend fails
+    }
+  }
+
+  // METHOD 2: Standard SMTP (Works locally, usually fails on Render)
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPass = process.env.SMTP_PASS;
+  const smtpPort = Number(process.env.SMTP_PORT) || 587;
+
+  let transporter;
+  if (smtpHost && smtpUser) {
+    console.log(`📡 SMTP: Attempting to connect to ${smtpHost}:${smtpPort}...`);
+    transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+      tls: { rejectUnauthorized: false, minVersion: 'TLSv1.2' }
+    });
+  } else {
+    console.log("🛠️ Using Ethereal Mock Mailer...");
+    const testAccount = await nodemailer.createTestAccount();
+    transporter = nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      auth: { user: testAccount.user, pass: testAccount.pass },
+    });
+  }
 
   try {
     const info = await transporter.sendMail({
@@ -80,18 +82,10 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
       subject,
       html,
     });
-
-    console.log(`\n============== OTP GENERATED ==============`);
-    console.log(`✉️  Sent To: ${email} [${type.toUpperCase()}]`);
-    console.log(`🔑 OTP Code: ${otp}`);
-    if (!smtpHost) {
-      console.log(`🌐 Inbox Preview: ${nodemailer.getTestMessageUrl(info)}`);
-    }
-    console.log(`===========================================\n`);
-    
+    console.log(`✅ Email sent successfully via SMTP`);
     return info;
   } catch (err: any) {
-    console.error("🔴 Fatal Error sending OTP Email:", err.message);
+    console.error("🔴 Fatal Error sending Email:", err.message);
     throw new Error(`Failed to send email: ${err.message}`);
   }
 };

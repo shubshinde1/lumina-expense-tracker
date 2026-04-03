@@ -46,7 +46,7 @@ export default function AuthPage() {
   // 3. Register: Verify OTP & Create
   const completeRegister = useMutation({
     mutationFn: async () => await api.post('/auth/register', { name, email, password, otp }),
-    onSuccess: (res) => { toast.success("Account verified successfully! Welcome to Lumina."); setUser(res.data); router.push("/dashboard"); },
+    onSuccess: (res) => { toast.success("Account verified successfully! Welcome to Wealthy."); setUser(res.data); router.push("/dashboard"); },
     onError: (err: any) => toast.error(err.response?.data?.message || "Verification failed")
   });
 

@@ -74,9 +74,9 @@ export const deleteSubcategory = async (req: AuthRequest, res: Response) => {
     if (txCount > 0) {
       return res.status(400).json({ message: `Cannot delete: This subcategory is consumed by ${txCount} transaction record(s).` });
     }
-    const category = await Category.findOne({ _id: req.params.categoryId, user: req.user._id });
+    const category = await Category.findOne({ _id: req.params.categoryId, user: req.user._id }) as any;
     if(!category) return res.status(404).json({ message: "Not found" });
-    category.subcategories = category.subcategories.filter((sub: any) => sub._id.toString() !== req.params.subId) as any;
+    category.subcategories = category.subcategories.filter((sub: any) => sub._id.toString() !== req.params.subId);
     await category.save();
     res.json(category);
   } catch (error: any) { res.status(500).json({ message: error.message }); }

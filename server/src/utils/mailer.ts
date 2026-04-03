@@ -6,10 +6,10 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
   const resendApiKey = process.env.RESEND_API_KEY;
   const smtpUser = process.env.SMTP_USER;
   
-  const subject = type === "register" ? "Lumina: Verify Your Registration" : "Lumina: Reset Your Password";
+  const subject = type === "register" ? "Wealthy: Verify Your Registration" : "Wealthy: Reset Your Password";
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 40px; background: #09090b; color: #ffffff; border-radius: 16px; border: 1px solid #27272a; max-width: 500px; margin: 0 auto;">
-      <h2 style="color: #6bfe9c; letter-spacing: 3px; font-weight: 800; text-shadow: 0 0 20px rgba(107, 254, 156, 0.2);">LUMINA</h2>
+      <h2 style="color: #6bfe9c; letter-spacing: 3px; font-weight: 800; text-shadow: 0 0 20px rgba(107, 254, 156, 0.2);">WEALTHY</h2>
       <div style="height: 1px; background: linear-gradient(90deg, transparent, #27272a, transparent); margin: 20px 0;"></div>
       <p style="color: #a1a1aa; font-size: 16px;">${type === 'register' ? 'To finalize your registration, use the code below:' : 'A password reset was requested. If this was not you, ignore this email.'}</p>
       
@@ -32,7 +32,7 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
           Authorization: `Bearer ${resendApiKey}`,
         },
         body: JSON.stringify({
-          from: "Lumina Security <onboarding@resend.dev>", // Once you verify domain, use your email
+          from: "Wealthy Security <onboarding@resend.dev>", // Shows as 'Wealthy' in inbox
           to: [email],
           subject,
           html,
@@ -77,7 +77,7 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
 
   try {
     const info = await transporter.sendMail({
-      from: `"Lumina Security" <${smtpUser || 'noreply@luminatracker.com'}>`,
+      from: `"Wealthy Security" <${smtpUser || 'noreply@wealthyapp.com'}>`,
       to: email,
       subject,
       html,

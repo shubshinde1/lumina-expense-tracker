@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
+import { Geolocation } from "@capacitor/geolocation";
 
 export default function EditTransactionPage() {
   return (
@@ -46,31 +47,35 @@ function EditContent() {
   // Auto-fetch location on mount
   useEffect(() => {
     let mounted = true;
-    if (typeof navigator !== "undefined" && navigator.geolocation) {
-      setIsFetchingLocation(true);
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          if (!mounted) return;
-          const { latitude, longitude } = position.coords;
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-            const data = await res.json();
-            const place = data.address?.city || data.address?.town || data.address?.village || data.address?.state || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            setLocationObj({ lat: latitude, lng: longitude, address: place });
-          } catch (e) {
-            setLocationObj({ lat: latitude, lng: longitude, address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` });
-          } finally {
-            setIsFetchingLocation(false);
-          }
-        },
-        (error) => {
-          if (!mounted) return;
-          console.warn("Location error:", error.message || "Denied/Unavailable");
-          setIsFetchingLocation(false);
-        },
-        { timeout: 5000, maximumAge: 60000 }
-      );
-    }
+    const fetchLocation = async () => {
+      try {
+        setIsFetchingLocation(true);
+        // On mobile, this will trigger the system permission popup if not already granted
+        const position = await Geolocation.getCurrentPosition({
+          enableHighAccuracy: true,
+          timeout: 10000
+        });
+
+        if (!mounted) return;
+        const { latitude, longitude } = position.coords;
+        
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          const place = data.address?.city || data.address?.town || data.address?.village || data.address?.state || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+          setLocationObj({ lat: latitude, lng: longitude, address: place });
+        } catch (e) {
+          setLocationObj({ lat: latitude, lng: longitude, address: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` });
+        }
+      } catch (error: any) {
+        if (!mounted) return;
+        console.warn("Location error:", error.message || "Denied/Unavailable");
+      } finally {
+        if (mounted) setIsFetchingLocation(false);
+      }
+    };
+
+    fetchLocation();
     return () => { mounted = false; };
   }, []);
 

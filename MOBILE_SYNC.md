@@ -9,6 +9,7 @@ Whenever you change your code in **`src/`**, run these commands in **`apps/web`*
 cd apps/web
 npm run build
 npx cap sync
+npx cap open android
 ```
 
 ---

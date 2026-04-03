@@ -32,7 +32,7 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
           Authorization: `Bearer ${resendApiKey}`,
         },
         body: JSON.stringify({
-          from: "Wealthy Security <onboarding@resend.dev>", // Shows as 'Wealthy' in inbox
+          from: "Wealthy Security <security@vsenv.space>", // Using your official verified domain
           to: [email],
           subject,
           html,
@@ -40,13 +40,21 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Resend API Error");
+      if (!response.ok) {
+        if (data.message?.includes("verify a domain")) {
+          throw new Error("Resend Sandbox Mode: You can only send to your own email address until you verify a domain at resend.com/domains.");
+        }
+        throw new Error(data.message || "Resend API Error");
+      }
       
       console.log("✅ Email sent successfully via Resend API");
       return data;
     } catch (err: any) {
       console.error("❌ Resend API Failed:", err.message);
-      // Fallback to SMTP if Resend fails
+      // STOP HERE ON RENDER - No point in trying SMTP if Resend fails a domain check
+      if (process.env.NODE_ENV === "production" || process.env.PORT) {
+        throw err; 
+      }
     }
   }
 

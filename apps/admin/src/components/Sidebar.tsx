@@ -1,5 +1,5 @@
 "use client";
-import { Users, LayoutDashboard, Tags, LogOut } from "lucide-react";
+import { Users, LayoutDashboard, Tags, LogOut, ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -15,6 +15,7 @@ export default function Sidebar() {
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Users", href: "/dashboard/users", icon: Users },
+    { label: "Transactions", href: "/dashboard/transactions", icon: ReceiptText },
     { label: "Global Categories", href: "/dashboard/categories", icon: Tags },
   ];
 

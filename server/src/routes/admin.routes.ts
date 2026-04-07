@@ -6,7 +6,10 @@ import {
   deleteUser,
   getGlobalCategories,
   createGlobalCategory,
-  deleteGlobalCategory
+  deleteGlobalCategory,
+  getPlatformStats,
+  getAllTransactions,
+  getUserAnalytics
 } from "../controllers/admin.controller";
 
 const router = express.Router();
@@ -21,5 +24,10 @@ router.route("/categories")
   .get(protect, admin, getGlobalCategories)
   .post(protect, admin, createGlobalCategory);
 router.route("/categories/:id").delete(protect, admin, deleteGlobalCategory);
+
+// Platform & Analytics routes
+router.route("/stats").get(protect, admin, getPlatformStats);
+router.route("/transactions").get(protect, admin, getAllTransactions);
+router.route("/users/:id/analytics").get(protect, admin, getUserAnalytics);
 
 export default router;

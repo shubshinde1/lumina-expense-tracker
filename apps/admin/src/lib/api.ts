@@ -1,13 +1,13 @@
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") : null;
-  
+
   const headers = {
     "Content-Type": "application/json",
     ...(token && { Authorization: `Bearer ${token}` }),
     ...options.headers,
   };
 
-  const response = await fetch(`http://127.0.0.1:5000/api${endpoint}`, {
+  const response = await fetch(`https://wealth-expense-tracker.onrender.com/api${endpoint}`, {
     ...options,
     headers,
   });
@@ -22,6 +22,6 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
 
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || "An error occurred");
-  
+
   return data;
 }

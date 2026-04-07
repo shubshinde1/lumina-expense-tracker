@@ -113,8 +113,11 @@ export const authUser = async (req: Request, res: Response) => {
   try {
     const user = await User.findOne({ email });
 
-    // Need to cast to any since we didn't type Document fully
     if (user && (await (user as any).matchPassword(password))) {
+      if (user.isSuspended) {
+        return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
+      }
+
       res.json({
         _id: user._id,
         name: user.name,

@@ -4,6 +4,7 @@ import { User } from "../models/User";
 import { Category } from "../models/Category";
 import { Transaction } from "../models/Transaction";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { sendBroadcastEmail } from "../utils/mailer";
 
 // @desc    Get all users
 // @route   GET /api/admin/users
@@ -145,6 +146,11 @@ export const deleteGlobalCategory = async (req: AuthRequest, res: Response): Pro
 export const getPlatformStats = async (req: AuthRequest, res: Response) => {
   try {
     const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ isSuspended: false });
+    const suspendedUsers = await User.countDocuments({ isSuspended: true });
+    const freeUsers = await User.countDocuments({ plan: 'free' });
+    const premiumUsers = await User.countDocuments({ plan: 'premium' });
+
     const totalTransactions = await Transaction.countDocuments();
 
     const volumeStats = await Transaction.aggregate([
@@ -171,6 +177,10 @@ export const getPlatformStats = async (req: AuthRequest, res: Response) => {
 
     res.json({
       totalUsers,
+      activeUsers,
+      suspendedUsers,
+      freeUsers,
+      premiumUsers,
       totalTransactions,
       totalIncome,
       totalExpense,
@@ -252,12 +262,132 @@ export const getUserAnalytics = async (req: AuthRequest, res: Response) => {
       .sort({ date: -1 })
       .populate('category', 'name icon color');
 
+    // Robust user fetch using aggregation (matching the main users list logic)
+    const userResult = await User.aggregate([
+      { $match: { _id: userId } },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          role: 1,
+          isSuspended: 1,
+          plan: 1
+        }
+      }
+    ]);
+    const user = userResult[0] || null;
+
     res.json({
+      user,
       monthlyTrends,
       categoryDistribution,
       history
     });
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc    Toggle user suspension
+// @route   PUT /api/admin/users/:id/suspend
+// @access  Private/Admin
+export const toggleUserSuspension = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.isSuspended = !user.isSuspended;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      isSuspended: user.isSuspended,
+      message: `User ${user.isSuspended ? 'suspended' : 'activated'} successfully`
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc    Update user plan
+// @route   PUT /api/admin/users/:id/plan
+// @access  Private/Admin
+export const updateUserPlan = async (req: AuthRequest, res: Response) => {
+  const { plan } = req.body;
+  if (!['free', 'premium'].includes(plan)) {
+    return res.status(400).json({ message: "Invalid plan type" });
+  }
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.plan = plan;
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      plan: user.plan,
+      message: `User plan updated to ${plan}`
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc    Reset user password
+// @route   PUT /api/admin/users/:id/password
+// @access  Private/Admin
+export const resetUserPassword = async (req: AuthRequest, res: Response) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ message: "Password must be at least 6 characters" });
+  }
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: "User password reset successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+// @desc    Send broadcast message to all users
+// @route   POST /api/admin/broadcast
+// @access  Private/Admin
+export const sendBroadcast = async (req: AuthRequest, res: Response) => {
+  const { subject, message, target } = req.body;
+
+  if (!subject || !message) {
+    return res.status(400).json({ message: "Subject and message are required" });
+  }
+
+  try {
+    const filter = target === 'premium' ? { plan: 'premium', isSuspended: false } : { isSuspended: false };
+    const users = await User.find(filter).select("email");
+    const emails = users.map(u => u.email);
+
+    if (emails.length === 0) {
+      return res.status(404).json({ message: "No recipients found for the selected target" });
+    }
+
+    await sendBroadcastEmail(emails, subject, message);
+
+    res.json({ message: `Broadcast sent to ${emails.length} users successfully` });
+  } catch (error: any) {
+    res.status(500).json({ message: "Error sending broadcast: " + error.message });
   }
 };

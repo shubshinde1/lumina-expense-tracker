@@ -1,9 +1,9 @@
 "use client";
-import { Users, LayoutDashboard, Tags, LogOut, ReceiptText } from "lucide-react";
+import { Users, LayoutDashboard, Tags, LogOut, ReceiptText, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -17,10 +17,22 @@ export default function Sidebar() {
     { label: "Users", href: "/dashboard/users", icon: Users },
     { label: "Transactions", href: "/dashboard/transactions", icon: ReceiptText },
     { label: "Global Categories", href: "/dashboard/categories", icon: Tags },
+    { label: "Broadcast", href: "/dashboard/broadcast", icon: Megaphone },
   ];
 
   return (
-    <aside className="w-64 bg-[#131315] border-r border-[#48474a] h-screen flex flex-col p-6 sticky top-0">
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
+            onClick={onClose}
+        />
+      )}
+
+      <aside className={`fixed md:sticky top-0 left-0 w-64 bg-[#131315] border-r border-[#48474a] h-screen flex flex-col p-6 z-50 transition-transform duration-500 ease-in-out ${
+        isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}>
       <div className="mb-10">
         <h2 className="text-xl font-bold  text-white flex items-center gap-2">
           <span className="w-8 h-8 rounded-lg bg-[#6bfe9c]/20 flex items-center justify-center text-[#6bfe9c]">
@@ -32,7 +44,9 @@ export default function Sidebar() {
 
       <nav className="flex-1 space-y-2">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = item.href === "/dashboard" 
+            ? pathname === "/dashboard" 
+            : pathname.startsWith(item.href);
           return (
             <Link 
               key={item.href} 
@@ -58,5 +72,6 @@ export default function Sidebar() {
         Sign Out
       </button>
     </aside>
+    </>
   );
 }

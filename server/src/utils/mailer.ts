@@ -97,3 +97,54 @@ export const sendOtpEmail = async (email: string, otp: string, type: "register" 
     throw new Error(`Failed to send email: ${err.message}`);
   }
 };
+
+export const sendBroadcastEmail = async (emails: string[], subject: string, message: string) => {
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const html = `
+    <div style="font-family: sans-serif; padding: 40px; background: #09090b; color: #ffffff; border-radius: 16px; border: 1px solid #27272a; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #6bfe9c;">WEALTHY UPDATE</h2>
+      <div style="height: 1px; background: #27272a; margin: 20px 0;"></div>
+      <p style="color: #a1a1aa; font-size: 16px; line-height: 1.6;">${message}</p>
+      <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #27272a; font-size: 11px; color: #52525b;">
+        You're receiving this as a registered user of Wealthy.
+      </div>
+    </div>
+  `;
+
+  if (resendApiKey) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${resendApiKey}`,
+        },
+        body: JSON.stringify({
+          from: "Wealthy <updates@vsenv.space>",
+          to: emails,
+          subject,
+          html,
+        }),
+      });
+      return { success: true };
+    } catch (err: any) {
+      console.error("Broadcast failed via Resend:", err.message);
+    }
+  }
+
+  // Fallback SMTP
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST,
+    port: Number(process.env.SMTP_PORT) || 587,
+    auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  });
+
+  await transporter.sendMail({
+    from: `"Wealthy" <${process.env.SMTP_USER}>`,
+    bcc: emails, // Use Bcc for privacy
+    subject,
+    html,
+  });
+
+  return { success: true };
+};

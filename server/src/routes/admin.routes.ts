@@ -9,7 +9,11 @@ import {
   deleteGlobalCategory,
   getPlatformStats,
   getAllTransactions,
-  getUserAnalytics
+  getUserAnalytics,
+  toggleUserSuspension,
+  updateUserPlan,
+  resetUserPassword,
+  sendBroadcast
 } from "../controllers/admin.controller";
 
 const router = express.Router();
@@ -18,6 +22,9 @@ const router = express.Router();
 router.route("/users").get(protect, admin, getUsers);
 router.route("/users/:id").delete(protect, admin, deleteUser);
 router.route("/users/:id/role").put(protect, admin, updateUserRole);
+router.route("/users/:id/suspend").put(protect, admin, toggleUserSuspension);
+router.route("/users/:id/plan").put(protect, admin, updateUserPlan);
+router.route("/users/:id/password").put(protect, admin, resetUserPassword);
 
 // Global category management routes
 router.route("/categories")

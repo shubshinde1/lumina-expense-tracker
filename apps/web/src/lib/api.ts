@@ -2,7 +2,7 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/useAuthStore';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://wealth-expense-tracker.onrender.com/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://lumina-expense-tracker-85ym.vercel.app/api',
   // baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
 });
 

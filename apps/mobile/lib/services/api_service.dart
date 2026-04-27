@@ -10,7 +10,7 @@ class ApiService {
   
   ApiService() {
     _dio = Dio(BaseOptions(
-      baseUrl: 'https://wealth-expense-tracker.onrender.com/api',
+      baseUrl: 'https://lumina-expense-tracker-85ym.vercel.app/api',
       connectTimeout: const Duration(seconds: 15),
     ));
 

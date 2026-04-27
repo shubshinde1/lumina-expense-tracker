@@ -15,15 +15,15 @@ export default function DiagnosticsPage() {
     setStatus(null);
 
     try {
-      const res = await fetch("https://wealth-expense-tracker.onrender.com/api/auth/login", {
+      const res = await fetch("https://lumina-expense-tracker-85ym.vercel.app/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const statusCode = res.status;
       setStatus(statusCode);
-      
+
       const data = await res.json();
       setResponse(data);
     } catch (err: any) {
@@ -75,35 +75,35 @@ export default function DiagnosticsPage() {
 
           {/* Results Dump */}
           <div className="space-y-6">
-             <div className="bg-[#131315] rounded-3xl border border-[#48474a] overflow-hidden">
-                <div className="bg-[#1f1f22] px-6 py-4 border-b border-[#48474a] flex justify-between items-center">
-                    <span className="text-xs font-bold uppercase text-zinc-400">HTTP Response Status</span>
-                    {status && (
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 200 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500'}`}>
-                            {status} {status === 200 ? 'OK' : status === 401 ? 'Unauthorized' : 'Error'}
-                        </span>
-                    )}
-                </div>
-                <div className="p-6">
-                    <pre className="text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed text-zinc-300 h-[300px]">
-                        {response ? JSON.stringify(response, null, 2) : "// Awaiting input..."}
-                    </pre>
-                </div>
-             </div>
+            <div className="bg-[#131315] rounded-3xl border border-[#48474a] overflow-hidden">
+              <div className="bg-[#1f1f22] px-6 py-4 border-b border-[#48474a] flex justify-between items-center">
+                <span className="text-xs font-bold uppercase text-zinc-400">HTTP Response Status</span>
+                {status && (
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${status === 200 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-500'}`}>
+                    {status} {status === 200 ? 'OK' : status === 401 ? 'Unauthorized' : 'Error'}
+                  </span>
+                )}
+              </div>
+              <div className="p-6">
+                <pre className="text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed text-zinc-300 h-[300px]">
+                  {response ? JSON.stringify(response, null, 2) : "// Awaiting input..."}
+                </pre>
+              </div>
+            </div>
 
-             {response?.role && (
-                 <div className={`p-4 rounded-2xl border ${response.role === 'admin' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
-                    <p className="text-xs uppercase font-bold text-zinc-500">Detected Role On Server</p>
-                    <p className={`text-xl font-bold mt-1 ${response.role === 'admin' ? 'text-[#6bfe9c]' : 'text-red-400'}`}>
-                        {response.role.toUpperCase()}
-                    </p>
-                    {response.role !== 'admin' && (
-                        <p className="text-[10px] text-zinc-600 mt-2">
-                           Warning: This account does not have admin permissions. Check MongoDB Atlas again.
-                        </p>
-                    )}
-                 </div>
-             )}
+            {response?.role && (
+              <div className={`p-4 rounded-2xl border ${response.role === 'admin' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                <p className="text-xs uppercase font-bold text-zinc-500">Detected Role On Server</p>
+                <p className={`text-xl font-bold mt-1 ${response.role === 'admin' ? 'text-[#6bfe9c]' : 'text-red-400'}`}>
+                  {response.role.toUpperCase()}
+                </p>
+                {response.role !== 'admin' && (
+                  <p className="text-[10px] text-zinc-600 mt-2">
+                    Warning: This account does not have admin permissions. Check MongoDB Atlas again.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

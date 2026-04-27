@@ -7,7 +7,7 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`https://wealth-expense-tracker.onrender.com/api${endpoint}`, {
+  const response = await fetch(`https://lumina-expense-tracker-85ym.vercel.app/api${endpoint}`, {
     ...options,
     headers,
   });

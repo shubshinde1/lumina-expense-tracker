@@ -11,7 +11,7 @@ export default function AdminLogin() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch("https://wealth-expense-tracker.onrender.com/api/auth/login", {
+      const res = await fetch("https://lumina-expense-tracker-85ym.vercel.app/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),

@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
+import AmountInput from "@/components/AmountInput";
 import { useAuthStore } from "@/stores/useAuthStore";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
@@ -133,11 +134,12 @@ function EditContent() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !categoryId) return alert("Please fill amount and category");
+    const finalAmount = amount.split('+').reduce((sum, val) => sum + (Number(val) || 0), 0);
+    if (!finalAmount || !categoryId) return alert("Please fill amount and category");
 
     mutation.mutate({
       type,
-      amount: Number(amount),
+      amount: finalAmount,
       description,
       date: fromLocalDateTimeLocal(date).toISOString(),
       category: categoryId,
@@ -188,17 +190,7 @@ function EditContent() {
 
         <div className="group relative">
           <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase text-center">Amount</label>
-          <div className="relative text-center">
-            <input
-              className="w-full text-center bg-transparent border-none focus:ring-0 outline-none transition-all duration-300 text-foreground placeholder-muted-foreground/50 font-heading text-5xl font-bold"
-              placeholder="0.00"
-              type="number"
-              step="0.01"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
+          <AmountInput value={amount} onChange={setAmount} />
         </div>
 
         <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-6 shadow-xl">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw } from "lucide-react";
+import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw, Search, X } from "lucide-react";
 import api from "@/lib/api";
 import { useState } from "react";
 import Link from "next/link";
@@ -45,6 +45,7 @@ export default function HistoryPage() {
   const [customStart, setCustomStart] = useState("");
   const [customEnd, setCustomEnd] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ['transactions'],
@@ -103,16 +104,60 @@ export default function HistoryPage() {
 
   const filteredData = (transactions || [])
     .filter((tx: any) => filter === 'all' || tx.type === filter)
-    .filter(filterByTime);
+    .filter(filterByTime)
+    .filter((tx: any) => {
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      const desc = (tx.description || '').toLowerCase();
+      const cat = (tx.category?.name || '').toLowerCase();
+      
+      const subCategoryName = tx.subcategory && tx.category?.subcategories 
+        ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory)?.name 
+        : null;
+      const subCat = (subCategoryName || '').toLowerCase();
+      
+      const loc = (tx.location?.address || '').toLowerCase();
+      const amt = tx.amount.toString();
+
+      return desc.includes(query) || 
+             cat.includes(query) || 
+             subCat.includes(query) || 
+             loc.includes(query) || 
+             amt.includes(query);
+    });
     
   const grouped = groupByDate(filteredData);
   const totalFiltered = filteredData.reduce((acc: number, tx: any) => acc + (tx.type === 'expense' ? -tx.amount : tx.amount), 0);
 
   return (
     <div className="px-4 py-3 md:p-8 space-y-4 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto">
-      <header>
-        <h1 className="font-heading text-2xl font-bold  text-foreground">History</h1>
-        <p className="text-[11px] text-muted-foreground uppercase mt-0.5 tracking-wider">Your complete transaction log</p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold text-foreground">History</h1>
+          <p className="text-[11px] text-muted-foreground uppercase mt-0.5 tracking-wider">Your complete transaction log</p>
+        </div>
+        
+        {/* Search Input */}
+        <div className="relative w-full md:max-w-xs animate-in fade-in zoom-in duration-500">
+          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+            <Search className="w-4 h-4 text-muted-foreground" />
+          </div>
+          <input 
+            type="text" 
+            placeholder="Search transactions..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-card border border-border rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-muted-foreground/50"
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')}
+              className="absolute inset-y-0 right-3 flex items-center"
+            >
+              <X className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Primary Type Filters */}
@@ -288,7 +333,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
 
   return (
     <div className="relative rounded-2xl overflow-hidden mb-3 md:mb-2 bg-card border border-border">
-      <div className="absolute inset-y-0 right-0 flex items-center justify-end w-[140px]" style={{ zIndex: 0 }}>
+      <div className="absolute inset-y-0 right-0 flex md:hidden items-center justify-end w-[140px]" style={{ zIndex: 0 }}>
         <button 
           onClick={(e) => { e.preventDefault(); onEdit(); }} 
           className="h-full flex-1 flex flex-col items-center justify-center bg-primary/20 hover:bg-primary/30 text-primary transition-colors border-r border-border/10"
@@ -342,8 +387,8 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0 pointer-events-none md:pointer-events-auto">
-          <div className="flex flex-col items-end">
+        <div className="relative flex items-center shrink-0 pointer-events-none md:pointer-events-auto h-full">
+          <div className="flex flex-col items-end transform transition-transform duration-300 md:group-hover:-translate-x-[90px]">
             <p className={`font-bold font-heading text-sm ${tx.type === 'income' ? 'text-primary' : 'text-destructive'}`}>
               {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
             </p>
@@ -365,7 +410,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
             })()}
           </div>
 
-          <div className="hidden md:flex items-center gap-1 bg-accent rounded-full opacity-0 group-hover:opacity-100 transition-opacity p-1">
+          <div className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 items-center gap-1 bg-accent rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 p-1 z-10 pointer-events-none group-hover:pointer-events-auto">
               <button
                 onClick={(e) => { e.preventDefault(); onEdit(); }}
                 className="w-8 h-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-card flex items-center justify-center transition-all bg-transparent"

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
+import AmountInput from "@/components/AmountInput";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
@@ -88,11 +89,12 @@ function AddTransactionForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !categoryId) return alert("Please fill amount and category");
+    const finalAmount = amount.split('+').reduce((sum, val) => sum + (Number(val) || 0), 0);
+    if (!finalAmount || !categoryId) return alert("Please fill amount and category");
 
     mutation.mutate({
       type,
-      amount: Number(amount),
+      amount: finalAmount,
       description,
       date: fromLocalDateTimeLocal(date).toISOString(),
       category: categoryId,
@@ -143,21 +145,10 @@ function AddTransactionForm() {
 
         {/* Amount */}
         <div className="group relative">
-          <label className="block font-medium text-xs text-muted-foreground mb-3  uppercase text-center">
+          <label className="block font-medium text-xs text-muted-foreground mb-3 uppercase text-center">
             Amount
           </label>
-          <div className="relative text-center">
-            {/* <span className="absolute left-1/2 -ml-16 top-1/2 -translate-y-1/2 text-3xl font-heading text-muted-foreground/50">₹</span> */}
-            <input
-              className="w-full text-center bg-transparent border-none focus:ring-0 outline-none transition-all duration-300 text-foreground placeholder-muted-foreground/50 font-heading text-5xl font-bold"
-              placeholder="0.00"
-              type="number"
-              step="0.01"
-              required
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-          </div>
+          <AmountInput value={amount} onChange={setAmount} autoFocus={true} />
         </div>
 
         <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-6 shadow-xl">
@@ -286,6 +277,7 @@ function AddTransactionForm() {
           Record {type}
         </button>
       </form>
+
     </div>
   );
 }

@@ -7,7 +7,8 @@ export async function apiFetch(endpoint: string, options: RequestInit = {}) {
     ...options.headers,
   };
 
-  const response = await fetch(`https://lumina-expense-tracker-85ym.vercel.app/api${endpoint}`, {
+  const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+  const response = await fetch(`${baseURL}${endpoint}`, {
     ...options,
     headers,
   });

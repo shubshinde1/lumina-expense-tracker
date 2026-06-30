@@ -24,7 +24,7 @@ export default function AmountInput({ value, onChange, autoFocus = false }: Amou
     const input = inputRef.current;
     const start = input.selectionStart !== null ? input.selectionStart : value.length;
     const end = input.selectionEnd !== null ? input.selectionEnd : value.length;
-    
+
     let nextAmount = value;
     let nextCursor = start;
 
@@ -67,9 +67,9 @@ export default function AmountInput({ value, onChange, autoFocus = false }: Amou
         className="w-full text-center bg-transparent border-none focus:ring-0 outline-none transition-all duration-300 text-foreground placeholder-muted-foreground/30 font-heading text-5xl font-bold p-0"
       />
       {value.includes('+') && (
-         <p className="text-xl font-heading text-primary mt-3 bg-primary/10 inline-block px-4 py-1 rounded-full border border-primary/20">
-           = ₹{value.split('+').reduce((sum, val) => sum + (Number(val) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
-         </p>
+        <p className="text-xl font-heading text-primary mt-3 bg-primary/10 inline-block px-4 py-1 rounded-full border border-primary/20">
+          = ₹{value.split('+').reduce((sum, val) => sum + (Number(val) || 0), 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}
+        </p>
       )}
 
       {/* Custom Keypad Overlay */}
@@ -77,31 +77,31 @@ export default function AmountInput({ value, onChange, autoFocus = false }: Amou
         <>
           <div className="fixed inset-0 z-[60] bg-transparent md:hidden" onClick={() => setShowKeypad(false)} />
           <div className="fixed inset-x-0 bottom-0 z-[70] bg-card border-t border-border shadow-[0_-20px_40px_rgba(0,0,0,0.2)] p-4 pb-8 animate-in slide-in-from-bottom duration-300 rounded-t-[2.5rem]">
-             <div className="flex justify-between items-center mb-4 px-4 max-w-md mx-auto">
-                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Amount Input</span>
-                <button type="button" onClick={() => setShowKeypad(false)} className="text-primary font-bold text-sm bg-primary/10 px-3 py-1 rounded-full">DONE</button>
-             </div>
-             <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
-                <Key onClick={() => handleKeyPress('1')}>1</Key>
-                <Key onClick={() => handleKeyPress('2')}>2</Key>
-                <Key onClick={() => handleKeyPress('3')}>3</Key>
-                
-                <Key onClick={() => handleKeyPress('4')}>4</Key>
-                <Key onClick={() => handleKeyPress('5')}>5</Key>
-                <Key onClick={() => handleKeyPress('6')}>6</Key>
+            <div className="flex justify-between items-center mb-4 px-4 max-w-md mx-auto">
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Amount Input</span>
+              <button type="button" onClick={() => setShowKeypad(false)} className="text-primary font-bold text-sm bg-primary/10 px-3 py-1 rounded-full">DONE</button>
+            </div>
+            <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
+              <Key onClick={() => handleKeyPress('1')}>1</Key>
+              <Key onClick={() => handleKeyPress('2')}>2</Key>
+              <Key onClick={() => handleKeyPress('3')}>3</Key>
 
-                <Key onClick={() => handleKeyPress('7')}>7</Key>
-                <Key onClick={() => handleKeyPress('8')}>8</Key>
-                <Key onClick={() => handleKeyPress('9')}>9</Key>
+              <Key onClick={() => handleKeyPress('4')}>4</Key>
+              <Key onClick={() => handleKeyPress('5')}>5</Key>
+              <Key onClick={() => handleKeyPress('6')}>6</Key>
 
-                {/* Bottom Row */}
-                <div className="grid grid-cols-2 gap-2">
-                  <Key onClick={() => handleKeyPress('+')} className="bg-primary/20 text-primary border-primary/20 font-bold text-2xl">+</Key>
-                  <Key onClick={() => handleKeyPress('.')}>.</Key>
-                </div>
-                <Key onClick={() => handleKeyPress('0')}>0</Key>
-                <Key onClick={() => handleKeyPress('Del')} className="bg-accent text-muted-foreground/80 hover:text-foreground"><Delete className="w-6 h-6"/></Key>
-             </div>
+              <Key onClick={() => handleKeyPress('7')}>7</Key>
+              <Key onClick={() => handleKeyPress('8')}>8</Key>
+              <Key onClick={() => handleKeyPress('9')}>9</Key>
+
+              {/* Bottom Row */}
+              <div className="grid grid-cols-2 gap-2">
+                <Key onClick={() => handleKeyPress('+')} className="bg-primary/20 text-primary border-primary/20 font-bold text-2xl">+</Key>
+                <Key onClick={() => handleKeyPress('.')}>.</Key>
+              </div>
+              <Key onClick={() => handleKeyPress('0')}>0</Key>
+              <Key onClick={() => handleKeyPress('Del')} className="bg-accent text-muted-foreground/80 hover:text-foreground"><Delete className="w-6 h-6" /></Key>
+            </div>
           </div>
         </>
       )}

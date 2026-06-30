@@ -1,9 +1,7 @@
 import axios from 'axios';
-import { useAuthStore } from '../stores/useAuthStore';
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://lumina-expense-tracker-85ym.vercel.app/api',
-  // baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api',
 });
 
 api.interceptors.request.use((config) => {
@@ -13,5 +11,19 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Redirect to login page if token is invalid or expired (401 Unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('lumina_user');
+        window.location.href = '/';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export default api;

@@ -3,9 +3,11 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
+import { ArrowLeft, Loader2, Save, MapPin, Mic, MessageSquare } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import AmountInput from "@/components/AmountInput";
+import VoiceWaveform from "@/components/VoiceWaveform";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
@@ -26,6 +28,79 @@ function AddTransactionForm() {
   const [paymentMode, setPaymentMode] = useState("UPI");
   const [locationObj, setLocationObj] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+
+  // Voice AI & SMS Parsing States
+  const [isRecording, setIsRecording] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [smsPasteText, setSmsPasteText] = useState("");
+  const [showPasteBox, setShowPasteBox] = useState(false);
+
+  useEffect(() => {
+    const rawSms = searchParams.get('sms');
+    if (rawSms) {
+      handleParseText(rawSms);
+    }
+  }, [searchParams]);
+
+  const handleParseText = async (text: string) => {
+    try {
+      setIsParsing(true);
+      const res = await api.post('/transactions/parse', { text });
+      const data = res.data;
+      if (data) {
+        if (data.type) setType(data.type);
+        if (data.amount) setAmount(data.amount.toString());
+        if (data.description) setDescription(data.description);
+        if (data.category) setCategoryId(data.category);
+        if (data.subcategory) setSubcategoryId(data.subcategory);
+        if (data.paymentMode) setPaymentMode(data.paymentMode);
+      }
+    } catch (e) {
+      console.error("NLP parsing failed", e);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const startVoiceRecognition = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported on this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "en-IN"; // Handles Indian context/dialects
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsRecording(true);
+    };
+
+    recognition.onerror = (event: any) => {
+      setIsRecording(false);
+      if (event.error === "no-speech") {
+        toast.info("No speech detected. Please speak clearly.");
+      } else if (event.error === "not-allowed") {
+        toast.error("Microphone access denied. Enable it in your browser settings.");
+      } else {
+        console.error("Speech recognition error:", event.error);
+        toast.error(`Voice recognition error: ${event.error}`);
+      }
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      handleParseText(transcript);
+    };
+
+    recognition.start();
+  };
 
   // Auto-fetch location on mount
   useEffect(() => {
@@ -143,12 +218,44 @@ function AddTransactionForm() {
           </button>
         </div>
 
-        {/* Amount */}
-        <div className="group relative">
+        {/* Amount with Voice AI Mic */}
+        <div className="group relative flex flex-col items-center">
           <label className="block font-medium text-xs text-muted-foreground mb-3 uppercase text-center">
             Amount
           </label>
           <AmountInput value={amount} onChange={setAmount} autoFocus={true} />
+          
+          <button
+            type="button"
+            onClick={isRecording ? undefined : startVoiceRecognition}
+            className={`relative mt-3 h-12 rounded-full flex items-center justify-center border transition-all duration-500 ease-in-out active:scale-95 ${
+              isRecording 
+                ? "w-48 bg-destructive/10 border-destructive/30 text-destructive shadow-[0_0_25px_rgba(239,68,68,0.2)]" 
+                : isParsing 
+                  ? "w-12 bg-accent border-primary text-primary" 
+                  : "w-12 bg-card border-border text-muted-foreground hover:text-foreground hover:border-primary"
+            }`}
+            title="Start voice logging"
+          >
+            {isRecording ? (
+              <VoiceWaveform />
+            ) : isParsing ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Mic className="w-5 h-5" />
+            )}
+          </button>
+          
+          {isRecording && (
+            <span className="text-[10px] text-destructive font-black uppercase tracking-widest mt-2 animate-pulse">
+              Listening...
+            </span>
+          )}
+          {isParsing && !isRecording && (
+            <p className="text-[10px] text-primary font-black uppercase tracking-widest mt-2">
+              Parsing details with AI...
+            </p>
+          )}
         </div>
 
         <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-6 shadow-xl">
@@ -267,10 +374,54 @@ function AddTransactionForm() {
             </div>
           </div>
 
+          {/* Web SMS Paste Fallback */}
+          <div className="group relative pt-4 pb-2 border-t border-border mt-2">
+            <div className="flex justify-between items-center">
+              <button
+                type="button"
+                onClick={() => setShowPasteBox(!showPasteBox)}
+                className="text-[10px] uppercase font-bold tracking-widest text-primary hover:underline bg-primary/5 px-3.5 py-2 rounded-xl flex items-center gap-1.5"
+              >
+                <MessageSquare className="w-3.5 h-3.5" /> 
+                {showPasteBox ? "Hide SMS Paste" : "Paste transaction SMS"}
+              </button>
+            </div>
+
+            {showPasteBox && (
+              <div className="bg-accent/40 rounded-2xl p-4 border border-border mt-3 space-y-3 animate-in slide-in-from-top-4 duration-300">
+                <label className="block text-[9px] uppercase font-black text-muted-foreground tracking-widest">
+                  Raw SMS text
+                </label>
+                <textarea
+                  value={smsPasteText}
+                  onChange={(e) => setSmsPasteText(e.target.value)}
+                  placeholder="Paste HDFC/ICICI debit notification or GPay message details..."
+                  rows={3}
+                  className="w-full bg-card border border-border rounded-xl px-4 py-3 text-xs text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-primary resize-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (smsPasteText) {
+                      handleParseText(smsPasteText);
+                      setSmsPasteText("");
+                      setShowPasteBox(false);
+                    }
+                  }}
+                  disabled={isParsing || !smsPasteText}
+                  className="w-full bg-primary text-black font-bold py-2.5 rounded-xl text-[10px] uppercase tracking-wider active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {isParsing && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  Auto-Fill Details
+                </button>
+              </div>
+            )}
+          </div>
+
         </div>
 
         <button
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || isParsing}
           className="w-full flex items-center justify-center gap-2 h-16 mt-8 bg-primary text-primary-foreground font-heading font-bold text-lg rounded-xl shadow-[0_12px_24px_-8px_var(--tw-shadow-color)] [--tw-shadow-color:color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:opacity-90 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:active:scale-100"
         >
           {mutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}

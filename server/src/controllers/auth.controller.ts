@@ -90,7 +90,7 @@ export const requestResetOtp = async (req: Request, res: Response) => {
 
 export const resetPassword = async (req: Request, res: Response) => {
   const { email, otp, newPassword } = req.body;
-  
+
   try {
     const validOtp = await Otp.findOne({ email, otp, type: "reset" });
     if (!validOtp) return res.status(400).json({ message: "Invalid or expired OTP." });

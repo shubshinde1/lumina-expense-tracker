@@ -42,7 +42,7 @@ export default function VoiceWaveform() {
         let phase = 0;
 
         function draw() {
-          if (!active || !ctx) return;
+          if (!active || !ctx || !canvas) return;
           animationRef.current = requestAnimationFrame(draw);
 
           analyser.getByteFrequencyData(dataArray);

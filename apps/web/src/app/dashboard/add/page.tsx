@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Loader2, Save, MapPin, Mic, MessageSquare } from "lucide-react";
+import { ArrowLeft, Loader2, Save, MapPin, Mic, MessageSquare, Sparkles, Cpu } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import AmountInput from "@/components/AmountInput";
@@ -34,6 +34,12 @@ function AddTransactionForm() {
   const [isParsing, setIsParsing] = useState(false);
   const [smsPasteText, setSmsPasteText] = useState("");
   const [showPasteBox, setShowPasteBox] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const [debugData, setDebugData] = useState<any>(null);
+  const [debugLogs, setDebugLogs] = useState<string[]>([]);
+  const addDebugLog = (msg: string) => {
+    setDebugLogs(prev => [...prev, `[${new Date().toLocaleTimeString()}] ${msg}`]);
+  };
 
   useEffect(() => {
     const rawSms = searchParams.get('sms');
@@ -45,9 +51,36 @@ function AddTransactionForm() {
   const handleParseText = async (text: string) => {
     try {
       setIsParsing(true);
+      addDebugLog(`Parsing Started. Spoken/SMS Text: "${text}"`);
+      addDebugLog(`Querying Endpoint: ${api.defaults.baseURL || "/api"}/transactions/parse`);
+
+      setDebugData((prev: any) => ({
+        ...prev,
+        status: "Querying API...",
+        transcription: text,
+        apiUrl: `${api.defaults.baseURL || "/api"}/transactions/parse`,
+        parserUsed: undefined
+      }));
+
       const res = await api.post('/transactions/parse', { text });
       const data = res.data;
+      
+      addDebugLog(`API Request Success! Parser Engine: ${data.parserUsed || "Unknown"}`);
+      if (data.geminiError) {
+        addDebugLog(`GEMINI API ERROR: "${data.geminiError}"`);
+      }
+      addDebugLog(`Parsed JSON payload: ${JSON.stringify(data)}`);
+
+      setDebugData((prev: any) => ({
+        ...prev,
+        status: "Success",
+        response: data,
+        parserUsed: data.parserUsed || "Unknown",
+        geminiError: data.geminiError
+      }));
+
       if (data) {
+        addDebugLog(`Applying parsed details to UI...`);
         if (data.type) setType(data.type);
         if (data.amount) setAmount(data.amount.toString());
         if (data.description) setDescription(data.description);
@@ -55,51 +88,222 @@ function AddTransactionForm() {
         if (data.subcategory) setSubcategoryId(data.subcategory);
         if (data.paymentMode) setPaymentMode(data.paymentMode);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("NLP parsing failed", e);
+      const errMsg = e.message || (e.response?.data?.message) || JSON.stringify(e);
+      addDebugLog(`API Request Failed. Error: ${errMsg}`);
+      
+      setDebugData((prev: any) => ({
+        ...prev,
+        status: "Error",
+        error: errMsg
+      }));
     } finally {
       setIsParsing(false);
     }
   };
 
-  const startVoiceRecognition = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      alert("Speech recognition is not supported on this browser.");
-      return;
-    }
+  const startVoiceRecognition = async () => {
+    // Clear logs for fresh run
+    setDebugLogs([]);
+    addDebugLog("Voice logging triggered.");
 
-    const recognition = new SpeechRecognition();
-    recognition.lang = "en-IN"; // Handles Indian context/dialects
-    recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    let retryCount = 0;
+    const maxRetries = 2;
 
-    recognition.onstart = () => {
-      setIsRecording(true);
-    };
+    const runRecognition = async () => {
+      // 300ms safety delay to allow native Android SpeechRecognizer to fully close from any previous session
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
-    recognition.onerror = (event: any) => {
-      setIsRecording(false);
-      if (event.error === "no-speech") {
-        toast.info("No speech detected. Please speak clearly.");
-      } else if (event.error === "not-allowed") {
-        toast.error("Microphone access denied. Enable it in your browser settings.");
-      } else {
-        console.error("Speech recognition error:", event.error);
-        toast.error(`Voice recognition error: ${event.error}`);
+      // Detect if running inside a Capacitor native app
+      const isCapacitor = typeof window !== 'undefined' && 
+        (window.location.origin.startsWith('capacitor://') || 
+        (window.location.hostname === 'localhost' && !window.location.port));
+
+      if (isCapacitor) {
+        try {
+          addDebugLog(`Starting native listener (Attempt ${retryCount + 1}/${maxRetries + 1})...`);
+          
+          addDebugLog("Loading @capacitor-community/speech-recognition dynamic import...");
+          const { SpeechRecognition } = await import("@capacitor-community/speech-recognition");
+          addDebugLog("SpeechRecognition plugin loaded successfully.");
+
+          setDebugData({ status: "Requesting native device permissions..." });
+          addDebugLog("Requesting native Android microphone & speech permissions...");
+          
+          const perm = await SpeechRecognition.requestPermissions();
+          addDebugLog(`Permissions response payload: ${JSON.stringify(perm)}`);
+
+          if (perm.speechRecognition !== 'granted') {
+            toast.error("Speech Recognition permission denied.");
+            setDebugData({ status: "Error", error: "Permission Denied: Speech recognition status is " + perm.speechRecognition });
+            addDebugLog(`Permission denied. Aborting voice session.`);
+            return;
+          }
+
+          addDebugLog("Permissions granted. Checking recognizer availability...");
+          const { available } = await SpeechRecognition.available();
+          addDebugLog(`Recognizer availability response: ${available}`);
+
+          if (!available) {
+            toast.error("Native Speech recognition is not available on this device.");
+            setDebugData({ status: "Error", error: "Native SpeechRecognition.available() returned false" });
+            addDebugLog("Speech recognizer is offline or not available. Aborting.");
+            return;
+          }
+
+          setIsRecording(true);
+          setDebugData({ status: "Listening... speak now." });
+          addDebugLog("Invoking SpeechRecognition.start() on device...");
+
+          // Setup clean listeners before starting
+          await SpeechRecognition.removeAllListeners();
+          addDebugLog("Cleaned up old speech listeners.");
+
+          SpeechRecognition.addListener('listeningState', (status: any) => {
+            addDebugLog(`Listener: listeningState event fired. Status: ${status.status}`);
+            setDebugData((prev: any) => ({
+              ...prev,
+              status: `Listening status: ${status.status}`
+            }));
+
+            if (status.status === 'started') {
+              // Subtle haptic buzz to notify the user the microphone is open and listening
+              if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                navigator.vibrate(80);
+              }
+            }
+
+            if (status.status === 'stopped' || status.status === 'error') {
+              setIsRecording(false);
+            }
+          });
+
+          const result = await SpeechRecognition.start({
+            language: 'en-IN',
+            maxResults: 1,
+            prompt: 'Speak your transaction...',
+            partialResults: false,
+            popup: false,
+          });
+          addDebugLog(`SpeechRecognition.start() resolved. Result payload: ${JSON.stringify(result)}`);
+
+          if (result && result.matches && result.matches.length > 0) {
+            const transcript = result.matches[0];
+            setDebugData((prev: any) => ({
+              ...prev,
+              status: "Speech captured",
+              transcription: transcript
+            }));
+            handleParseText(transcript);
+          } else {
+            throw new Error("No match");
+          }
+
+        } catch (err: any) {
+          const errMsg = err.message || JSON.stringify(err) || "Unknown error";
+          addDebugLog(`Recognition failed (Attempt ${retryCount + 1}): "${errMsg}"`);
+
+          // 1. Differentiate user silence vs speech-not-understood (not critical code errors)
+          if (errMsg.includes("No speech input")) {
+            setIsRecording(false);
+            toast.info("No speech detected. Tap the mic and speak your transaction.");
+            setDebugData({ status: "Idle", error: "No speech detected" });
+            addDebugLog("Speech recognition stopped: User remained silent (No speech input).");
+            return;
+          }
+
+          if (errMsg.includes("No match")) {
+            setIsRecording(false);
+            toast.info("Couldn't understand your voice. Please speak clearly.");
+            setDebugData({ status: "Idle", error: "Voice could not be matched" });
+            addDebugLog("Speech recognition stopped: User spoke but voice couldn't be matched (No match).");
+            return;
+          }
+
+          // 2. Retry ONLY on transient native engine locks (busy / collision)
+          const isTransient = errMsg.includes("Didn't understand") || 
+                              errMsg.includes("Client side error") ||
+                              errMsg.includes("busy");
+
+          if (isTransient && retryCount < maxRetries) {
+            retryCount++;
+            addDebugLog(`Transient lock detected. Auto-retrying in 400ms...`);
+            await runRecognition();
+          } else {
+            setIsRecording(false);
+            console.error("Capacitor Speech Recognition Error:", err);
+            toast.error(`System error: ${errMsg}`);
+            setDebugData({ status: "Error", error: errMsg });
+            addDebugLog(`CRITICAL: SpeechRecognition aborted after ${retryCount + 1} attempts. error: "${errMsg}"`);
+          }
+        }
+        return;
       }
+
+      // Standard HTML5 browser fallback (webkitSpeechRecognition)
+      const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognitionClass) {
+        alert("Speech recognition is not supported on this browser.");
+        return;
+      }
+
+      const recognition = new SpeechRecognitionClass();
+      recognitionRef.current = recognition;
+      recognition.lang = "en-IN";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsRecording(true);
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsRecording(false);
+        if (event.error === "no-speech") {
+          toast.info("No speech detected. Please speak clearly.");
+        } else if (event.error === "not-allowed") {
+          toast.error("Microphone access denied. Enable it in your browser settings.");
+        } else {
+          console.error("Speech recognition error:", event.error);
+          toast.error(`Voice recognition error: ${event.error}`);
+        }
+      };
+
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        handleParseText(transcript);
+      };
+
+      recognition.start();
     };
 
-    recognition.onend = () => {
-      setIsRecording(false);
-    };
+    await runRecognition();
+  };
 
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript;
-      handleParseText(transcript);
-    };
 
-    recognition.start();
+  const stopVoiceRecognition = async () => {
+    setIsRecording(false);
+    const isCapacitor = typeof window !== 'undefined' && 
+      (window.location.origin.startsWith('capacitor://') || 
+      (window.location.hostname === 'localhost' && !window.location.port));
+
+    if (isCapacitor) {
+      try {
+        const { SpeechRecognition } = await import("@capacitor-community/speech-recognition");
+        await SpeechRecognition.stop();
+      } catch (err) {
+        console.error("Failed to stop native voice recognition", err);
+      }
+    } else {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    }
   };
 
   // Auto-fetch location on mount
@@ -227,7 +431,7 @@ function AddTransactionForm() {
           
           <button
             type="button"
-            onClick={isRecording ? undefined : startVoiceRecognition}
+            onClick={isRecording ? stopVoiceRecognition : startVoiceRecognition}
             className={`relative mt-3 h-12 rounded-full flex items-center justify-center border transition-all duration-500 ease-in-out active:scale-95 ${
               isRecording 
                 ? "w-48 bg-destructive/10 border-destructive/30 text-destructive shadow-[0_0_25px_rgba(239,68,68,0.2)]" 
@@ -428,6 +632,96 @@ function AddTransactionForm() {
           Record {type}
         </button>
       </form>
+
+      {/* Dynamic Debug Console for Android testing */}
+      {debugLogs.length > 0 && (
+        <div className="w-full mt-8 p-5 rounded-3xl bg-[#131315] border border-border text-zinc-300 font-mono text-[11px] space-y-4 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-border pb-2.5">
+            <span className="text-[#6bfe9c] font-black uppercase text-[10px] tracking-wider">Voice Journey Timeline</span>
+            <button 
+              type="button" 
+              onClick={() => { setDebugLogs([]); setDebugData(null); }}
+              className="text-zinc-500 hover:text-zinc-300 uppercase text-[9px] font-bold"
+            >
+              Clear Console
+            </button>
+          </div>
+          
+          {/* Scrollable Timeline */}
+          <div className="bg-black/40 p-3 rounded-xl border border-border max-h-60 overflow-y-auto space-y-1.5">
+            {debugLogs.map((log, index) => (
+              <div 
+                key={index} 
+                className={`leading-relaxed break-all ${
+                  log.includes("Failed") || log.includes("Error") || log.includes("CRITICAL") || log.includes("denied")
+                    ? "text-destructive" 
+                    : log.includes("Success") || log.includes("Success!")
+                      ? "text-primary"
+                      : "text-zinc-400"
+                }`}
+              >
+                {log}
+              </div>
+            ))}
+          </div>
+
+          {debugData && (
+            <div className="space-y-2 pt-2 border-t border-border/50">
+              <div>
+                <span className="text-muted-foreground font-bold">Summary Status:</span>{" "}
+                <span className={debugData.status === "Success" ? "text-primary" : debugData.status === "Error" ? "text-destructive" : "text-primary animate-pulse"}>
+                  {debugData.status}
+                </span>
+              </div>
+              {debugData.parserUsed && (
+                <div className="flex flex-col gap-1 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-muted-foreground font-bold">Parser Engine:</span>{" "}
+                    <span className="flex items-center gap-1 font-semibold text-zinc-200">
+                      {debugData.parserUsed.includes("Gemini") ? (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400/20" />
+                          <span className="text-cyan-400">{debugData.parserUsed}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Cpu className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="text-amber-500">{debugData.parserUsed}</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+                  {debugData.geminiError && (
+                    <div className="text-rose-400 text-[10px] mt-1.5 bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 max-w-full break-all leading-normal font-sans">
+                      <span className="font-bold">Gemini Rejection:</span> {debugData.geminiError}
+                    </div>
+                  )}
+                </div>
+              )}
+              {debugData.transcription && (
+                <div>
+                  <span className="text-muted-foreground font-bold">Speech Text:</span>{" "}
+                  <span className="text-foreground italic">"{debugData.transcription}"</span>
+                </div>
+              )}
+              {debugData.response && (
+                <div className="bg-black/30 p-3 rounded-xl border border-border mt-1.5">
+                  <span className="text-muted-foreground font-bold block mb-1.5">Parsed JSON Payload:</span>
+                  <pre className="text-[10px] text-[#6bfe9c] overflow-x-auto whitespace-pre-wrap">
+                    {JSON.stringify(debugData.response, null, 2)}
+                  </pre>
+                </div>
+              )}
+              {debugData.error && (
+                <div className="bg-destructive/10 p-3 rounded-xl border border-destructive/20 text-destructive mt-1.5 break-all">
+                  <span className="text-destructive font-bold block mb-1.5">Error:</span>
+                  {debugData.error}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
     </div>
   );

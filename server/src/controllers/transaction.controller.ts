@@ -118,6 +118,7 @@ export const deleteTransaction = async (req: AuthRequest, res: Response) => {
 export const parseNaturalLanguage = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { text } = req.body;
+    let geminiError: string | null = null;
     if (!text) {
       res.status(400).json({ message: "Text input is required" });
       return;
@@ -164,7 +165,7 @@ Respond ONLY with a valid JSON object matching this schema:
 Text to parse:
 "${text}"`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -176,7 +177,7 @@ Text to parse:
         if (!response.ok) {
           const errorText = await response.text();
           console.error("Gemini API error payload:", errorText);
-          throw new Error(`Gemini API responded with status ${response.status}`);
+          throw new Error(`Google API Rejection (Status ${response.status}): ${errorText}`);
         }
 
         const result: any = await response.json();
@@ -184,10 +185,14 @@ Text to parse:
 
         if (parsedText) {
           const parsedJson = JSON.parse(parsedText.trim());
-          res.json(parsedJson);
+          res.json({
+            ...parsedJson,
+            parserUsed: "Gemini 2.5 Flash API"
+          });
           return;
         }
       } catch (err: any) {
+        geminiError = err.message || JSON.stringify(err) || "Unknown Gemini API error";
         console.warn("Gemini parsing failed, falling back to local parser:", err.message);
       }
     }
@@ -334,7 +339,9 @@ Text to parse:
       description,
       category: matchedCategory ? matchedCategory._id.toString() : categories[0]?._id?.toString() || "",
       subcategory: matchedSubcategory,
-      paymentMode
+      paymentMode,
+      parserUsed: "Local Rule-Based Parser",
+      geminiError
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });

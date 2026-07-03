@@ -16,14 +16,20 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         SmsReceiver.setMainActivity(this);
 
-        // Runtime permission check for RECEIVE_SMS
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECEIVE_SMS}, SMS_PERMISSION_CODE);
+        // Runtime permission check for RECEIVE_SMS and RECORD_AUDIO
+        boolean hasSms = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED;
+        boolean hasAudio = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        
+        if (!hasSms || !hasAudio) {
+            ActivityCompat.requestPermissions(this, new String[]{
+                Manifest.permission.RECEIVE_SMS,
+                Manifest.permission.RECORD_AUDIO
+            }, SMS_PERMISSION_CODE);
         }
     }
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
         super.onDestroy();
         SmsReceiver.setMainActivity(null);
     }

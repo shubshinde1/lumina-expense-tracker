@@ -11,6 +11,68 @@ export default function VoiceWaveform() {
   useEffect(() => {
     let active = true;
 
+    const isCapacitor = typeof window !== 'undefined' && 
+      (window.location.origin.startsWith('capacitor://') || 
+      (window.location.hostname === 'localhost' && !window.location.port));
+
+    if (isCapacitor) {
+      // Run simulated animation directly on canvas to prevent locking the mic resource
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          let phase = 0;
+          const drawSimulated = () => {
+            if (!active || !ctx || !canvas) return;
+            animationRef.current = requestAnimationFrame(drawSimulated);
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = "round";
+
+            const wavesCount = 3;
+            const colors = [
+              "rgba(239, 68, 68, 0.8)",  // Bright red
+              "rgba(239, 68, 68, 0.4)",  // Medium red
+              "rgba(251, 113, 133, 0.2)" // Faded rose
+            ];
+
+            phase += 0.15;
+            // Simulated volume amplitude peaks
+            const volume = 0.45 + Math.sin(phase * 1.1) * 0.18 + Math.cos(phase * 0.4) * 0.12;
+
+            for (let w = 0; w < wavesCount; w++) {
+              ctx.beginPath();
+              ctx.strokeStyle = colors[w];
+
+              const amplitude = (canvas.height / 2.2) * volume * (1 - w * 0.35);
+              const frequency = 0.05 + w * 0.02;
+
+              for (let x = 0; x < canvas.width; x++) {
+                const normalizedX = x / canvas.width;
+                const envelope = Math.sin(normalizedX * Math.PI);
+                const y =
+                  canvas.height / 2 +
+                  Math.sin(x * frequency + phase) * amplitude * envelope;
+
+                if (x === 0) {
+                  ctx.moveTo(x, y);
+                } else {
+                  ctx.lineTo(x, y);
+                }
+              }
+              ctx.stroke();
+            }
+          };
+          drawSimulated();
+        }
+      }
+      return () => {
+        active = false;
+        if (animationRef.current) cancelAnimationFrame(animationRef.current);
+      };
+    }
+
     async function initAudio() {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });

@@ -62,6 +62,7 @@ export default function NotificationsPage() {
   const queryClient = useQueryClient();
   const [isMounted, setIsMounted] = useState(false);
   const [offlineSmsList, setOfflineSmsList] = useState<string[]>([]);
+  const [loadingNotifId, setLoadingNotifId] = useState<string | null>(null);
 
   // Authenticate user on mount
   useEffect(() => {
@@ -75,11 +76,6 @@ export default function NotificationsPage() {
   useEffect(() => {
     const fetchOfflineSms = async () => {
       try {
-        const isCapacitor = typeof window !== 'undefined' && 
-          (window.location.origin.startsWith('capacitor://') || 
-          (window.location.hostname === 'localhost' && !window.location.port));
-        if (!isCapacitor) return;
-
         const { registerPlugin } = await import("@capacitor/core");
         const LuminaBridge = registerPlugin<any>('LuminaBridge');
         const res = await LuminaBridge.getPendingSmsList();
@@ -88,7 +84,7 @@ export default function NotificationsPage() {
           setOfflineSmsList(list);
         }
       } catch (e) {
-        console.error("Failed to load offline SMS:", e);
+        console.warn("LuminaBridge failed (running in browser mode):", e);
       }
     };
 
@@ -96,6 +92,32 @@ export default function NotificationsPage() {
       fetchOfflineSms();
     }
   }, [isMounted, user]);
+
+  // Real-time Event Listener to update list immediately when SMS is received in foreground
+  useEffect(() => {
+    const handleSmsReceivedEvent = async () => {
+      // 1. Invalidate query to pull the new database notification
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+
+      // 2. Query SharedPreferences for the updated offline list (if logging fell back offline)
+      try {
+        const { registerPlugin } = await import("@capacitor/core");
+        const LuminaBridge = registerPlugin<any>('LuminaBridge');
+        const res = await LuminaBridge.getPendingSmsList();
+        if (res && res.smsList) {
+          const list = JSON.parse(res.smsList);
+          setOfflineSmsList(list);
+        }
+      } catch (e) {
+        console.warn("LuminaBridge fetch failed on broadcast event:", e);
+      }
+    };
+
+    window.addEventListener("bankSmsReceived", handleSmsReceivedEvent);
+    return () => {
+      window.removeEventListener("bankSmsReceived", handleSmsReceivedEvent);
+    };
+  }, [queryClient]);
 
   // Fetch db notifications
   const { data: dbNotifications = [], isLoading, error } = useQuery<any[]>({
@@ -146,7 +168,6 @@ export default function NotificationsPage() {
         
         await LuminaBridge.savePendingSmsList({ smsList: JSON.stringify(filtered) });
         setOfflineSmsList(filtered);
-        toast.success("Transaction alert dismissed");
       }
     } catch (e) {
       console.error("Failed to dismiss offline SMS:", e);
@@ -155,19 +176,46 @@ export default function NotificationsPage() {
 
   const handleNotificationClick = (notif: any) => {
     if (notif.metadata?.isOfflinePending) {
-      // Offline items shouldn't mark as read in db
-      return;
+      return; // Offline pending SMS must be logged first
     }
+    
     if (!notif.isRead) {
       markReadMutation.mutate(notif._id);
     }
-    if (notif.actionUrl) {
+
+    // Direct routing to transaction edit mode if transactionId is logged
+    if (notif.metadata?.transactionId) {
+      router.push(`/dashboard/edit?id=${notif.metadata.transactionId}`);
+    } else if (notif.actionUrl) {
       router.push(notif.actionUrl);
     }
   };
 
-  const handleLog = (smsText: string) => {
-    router.push(`/dashboard/add?sms=${encodeURIComponent(smsText)}`);
+  // Directly log the transaction in the background
+  const handleDirectLog = async (smsText: string, notifId: string, isOffline: boolean) => {
+    setLoadingNotifId(notifId);
+    try {
+      const res = await api.post('/transactions/auto-log', { smsText });
+      toast.success("Transaction auto-logged successfully!");
+      
+      // If it was offline pending, clear it from preferences queue
+      if (isOffline) {
+        await dismissOfflineSms(smsText);
+      }
+      
+      // Refresh the query list
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+
+      // Automatically redirect to edit mode for the created transaction
+      if (res.data?.transaction?._id) {
+        router.push(`/dashboard/edit?id=${res.data.transaction._id}`);
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to auto-log transaction");
+    } finally {
+      setLoadingNotifId(null);
+    }
   };
 
   const getNotifIcon = (type: string) => {
@@ -272,13 +320,16 @@ export default function NotificationsPage() {
             if (isTransaction) {
               const smsText = notif.metadata?.smsText || notif.message;
               const summary = notif.metadata?.summary || getShortSummary(smsText);
+              const isOffline = !!notif.metadata?.isOfflinePending;
+              const isLoadingSms = loadingNotifId === notif._id;
               
               return (
                 <div 
                   key={notif._id}
-                  className={`glass-card bg-card/90 backdrop-blur-2xl border border-primary/20 shadow-lg rounded-2xl p-4 flex gap-4 items-center relative overflow-hidden animate-in fade-in duration-300 ${
-                    notif.metadata?.isOfflinePending ? "ring-1 ring-primary/30" : ""
+                  className={`glass-card bg-card/90 backdrop-blur-2xl border border-primary/20 shadow-lg rounded-2xl p-4 flex gap-4 items-center relative overflow-hidden animate-in fade-in duration-300 cursor-pointer ${
+                    isOffline ? "ring-1 ring-primary/30" : ""
                   }`}
+                  onClick={() => handleNotificationClick(notif)}
                 >
                   {/* Glow effect */}
                   <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
@@ -291,25 +342,30 @@ export default function NotificationsPage() {
                   {/* Text details */}
                   <div className="flex-1 min-w-0 pr-2">
                     <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">
-                      {notif.metadata?.isOfflinePending ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}
+                      {isOffline ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}
                     </p>
                     <h4 className="text-xs font-bold text-foreground leading-tight truncate">{summary}</h4>
                     <p className="text-[9px] text-muted-foreground truncate mt-0.5">{smsText}</p>
                   </div>
 
                   {/* Action buttons matching the overlay popup */}
-                  <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
                     <button 
-                      onClick={() => handleLog(smsText)}
-                      className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
-                      title="Log transaction"
+                      onClick={() => handleDirectLog(smsText, notif._id, isOffline)}
+                      disabled={isLoadingSms}
+                      className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20 disabled:opacity-75"
+                      title="Log transaction directly"
                     >
-                      <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                      {isLoadingSms ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                      )}
                     </button>
                     
                     <button 
                       onClick={() => {
-                        if (notif.metadata?.isOfflinePending) {
+                        if (isOffline) {
                           dismissOfflineSms(smsText);
                         } else {
                           deleteMutation.mutate(notif._id);

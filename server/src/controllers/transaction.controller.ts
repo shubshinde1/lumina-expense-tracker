@@ -390,7 +390,8 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
         amount: parsed.amount.toString(),
         description: parsed.description,
         type: parsed.type,
-        smsText: smsText
+        smsText: smsText,
+        transactionId: transaction._id.toString()
       }
     });
 

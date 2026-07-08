@@ -39,7 +39,7 @@ public class SmsReceiver extends BroadcastReceiver {
                     for (Object pdu : pdus) {
                         SmsMessage smsMessage = SmsMessage.createFromPdu((byte[]) pdu);
                         String sender = smsMessage.getDisplayOriginatingAddress();
-                        String messageBody = smsMessage.getMessageBody();
+                        final String messageBody = smsMessage.getMessageBody();
                         
                         Log.d("LuminaSmsReceiver", "SMS Received from: " + sender + ", Body: " + messageBody);
                         
@@ -49,8 +49,21 @@ public class SmsReceiver extends BroadcastReceiver {
                             if (mainActivityInstance != null) {
                                 mainActivityInstance.triggerSmsReceived(sender, messageBody);
                             }
-                            // 2. Perform background auto-logging and notification flow
-                            handleBackgroundSms(context, messageBody);
+                            
+                            // 2. Perform background auto-logging asynchronously with goAsync()
+                            final PendingResult pendingResult = goAsync();
+                            final Context appContext = context.getApplicationContext();
+                            
+                            new Thread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    try {
+                                        handleBackgroundSms(appContext, messageBody);
+                                    } finally {
+                                        pendingResult.finish();
+                                    }
+                                }
+                            }).start();
                         }
                     }
                 }
@@ -74,61 +87,56 @@ public class SmsReceiver extends BroadcastReceiver {
             return;
         }
 
-        // Run HTTP POST in background thread to avoid NetworkOnMainThreadException
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    URL url = new URL(apiUrl + "/transactions/auto-log");
-                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "application/json; utf-8");
-                    conn.setRequestProperty("Accept", "application/json");
-                    conn.setRequestProperty("Authorization", "Bearer " + token);
-                    conn.setDoOutput(true);
-                    conn.setConnectTimeout(12000);
-                    conn.setReadTimeout(12000);
+        // Run HTTP POST synchronously inside this background thread
+        try {
+            URL url = new URL(apiUrl + "/transactions/auto-log");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; utf-8");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setRequestProperty("Authorization", "Bearer " + token);
+            conn.setDoOutput(true);
+            conn.setConnectTimeout(12000);
+            conn.setReadTimeout(12000);
 
-                    // Escape characters for valid JSON
-                    String escapedSms = messageBody.replace("\\", "\\\\")
-                                                   .replace("\"", "\\\"")
-                                                   .replace("\n", "\\n")
-                                                   .replace("\r", "\\r");
-                    String jsonInputString = "{\"smsText\": \"" + escapedSms + "\"}";
+            // Escape characters for valid JSON
+            String escapedSms = messageBody.replace("\\", "\\\\")
+                                           .replace("\"", "\\\"")
+                                           .replace("\n", "\\n")
+                                           .replace("\r", "\\r");
+            String jsonInputString = "{\"smsText\": \"" + escapedSms + "\"}";
 
-                    try (OutputStream os = conn.getOutputStream()) {
-                        byte[] input = jsonInputString.getBytes("utf-8");
-                        os.write(input, 0, input.length);
-                    }
-
-                    int responseCode = conn.getResponseCode();
-                    if (responseCode == 201 || responseCode == 200) {
-                        BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
-                        StringBuilder response = new StringBuilder();
-                        String responseLine;
-                        while ((responseLine = br.readLine()) != null) {
-                            response.append(responseLine.trim());
-                        }
-
-                        JSONObject jsonResponse = new JSONObject(response.toString());
-                        JSONObject transaction = jsonResponse.getJSONObject("transaction");
-                        double amount = transaction.getDouble("amount");
-                        String desc = transaction.getString("description");
-                        String type = transaction.getString("type");
-
-                        showNotification(context, "Auto-Logging Transaction", 
-                            "Logged " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + " at " + desc + ". Tap to view/edit.");
-                        Log.d("LuminaSmsReceiver", "Successfully auto-logged transaction to backend database.");
-                    } else {
-                        Log.e("LuminaSmsReceiver", "Backend rejection code: " + responseCode);
-                        fallbackOffline(context, messageBody);
-                    }
-                } catch (Exception e) {
-                    Log.e("LuminaSmsReceiver", "Error connecting to backend API: " + e.getMessage(), e);
-                    fallbackOffline(context, messageBody);
-                }
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonInputString.getBytes("utf-8");
+                os.write(input, 0, input.length);
             }
-        }).start();
+
+            int responseCode = conn.getResponseCode();
+            if (responseCode == 201 || responseCode == 200) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), "utf-8"));
+                StringBuilder response = new StringBuilder();
+                String responseLine;
+                while ((responseLine = br.readLine()) != null) {
+                    response.append(responseLine.trim());
+                }
+
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                JSONObject transaction = jsonResponse.getJSONObject("transaction");
+                double amount = transaction.getDouble("amount");
+                String desc = transaction.getString("description");
+                String type = transaction.getString("type");
+
+                showNotification(context, "Auto-Logging Transaction", 
+                    "Logged " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + " at " + desc + ". Tap to view/edit.");
+                Log.d("LuminaSmsReceiver", "Successfully auto-logged transaction to backend database.");
+            } else {
+                Log.e("LuminaSmsReceiver", "Backend rejection code: " + responseCode);
+                fallbackOffline(context, messageBody);
+            }
+        } catch (Exception e) {
+            Log.e("LuminaSmsReceiver", "Error connecting to backend API: " + e.getMessage(), e);
+            fallbackOffline(context, messageBody);
+        }
     }
 
     private void fallbackOffline(Context context, String messageBody) {

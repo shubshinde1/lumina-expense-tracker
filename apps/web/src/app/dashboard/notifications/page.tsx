@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Bell, 
   Trash2, 
@@ -10,7 +10,10 @@ import {
   CreditCard, 
   Megaphone, 
   ShieldAlert, 
-  Inbox
+  Inbox,
+  MessageSquare,
+  ArrowRight,
+  X
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -34,12 +37,33 @@ function formatRelativeTime(dateStr: string): string {
   return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+// Local helper to parse SMS amounts and merchants for card title summaries
+const getShortSummary = (body: string) => {
+  const lower = body.toLowerCase();
+  let amount = "";
+  const amtMatch = body.match(/(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/i);
+  if (amtMatch) amount = `₹${amtMatch[1]}`;
+
+  let merchant = "";
+  const merchantMatch = body.match(/(?:at|to|info)\s+([A-Za-z0-9\s]+?)(?:\s+via|\s+on|\s+ref|\s+txn|\.)/i);
+  if (merchantMatch) merchant = merchantMatch[1].trim();
+
+  const isDebit = lower.includes("debited") || lower.includes("spent") || lower.includes("paid") || lower.includes("charged");
+
+  if (amount) {
+    return `${isDebit ? "Spent" : "Received"} ${amount}${merchant ? ` at ${merchant}` : ""}`;
+  }
+  return "New transaction SMS detected";
+};
+
 export default function NotificationsPage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const queryClient = useQueryClient();
   const [isMounted, setIsMounted] = useState(false);
+  const [offlineSmsList, setOfflineSmsList] = useState<string[]>([]);
 
+  // Authenticate user on mount
   useEffect(() => {
     setIsMounted(true);
     if (isMounted && !user) {
@@ -47,8 +71,34 @@ export default function NotificationsPage() {
     }
   }, [user, router, isMounted]);
 
-  // Fetch notifications list
-  const { data: notifications = [], isLoading, error } = useQuery<any[]>({
+  // Load offline pending SMS messages from SharedPreferences on mount
+  useEffect(() => {
+    const fetchOfflineSms = async () => {
+      try {
+        const isCapacitor = typeof window !== 'undefined' && 
+          (window.location.origin.startsWith('capacitor://') || 
+          (window.location.hostname === 'localhost' && !window.location.port));
+        if (!isCapacitor) return;
+
+        const { registerPlugin } = await import("@capacitor/core");
+        const LuminaBridge = registerPlugin<any>('LuminaBridge');
+        const res = await LuminaBridge.getPendingSmsList();
+        if (res && res.smsList) {
+          const list = JSON.parse(res.smsList);
+          setOfflineSmsList(list);
+        }
+      } catch (e) {
+        console.error("Failed to load offline SMS:", e);
+      }
+    };
+
+    if (isMounted && user) {
+      fetchOfflineSms();
+    }
+  }, [isMounted, user]);
+
+  // Fetch db notifications
+  const { data: dbNotifications = [], isLoading, error } = useQuery<any[]>({
     queryKey: ['notifications'],
     queryFn: async () => {
       const response = await api.get('/notifications');
@@ -56,7 +106,7 @@ export default function NotificationsPage() {
     }
   });
 
-  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+  const unreadCount = dbNotifications.filter((n: any) => !n.isRead).length;
 
   // 1. Mark Notification as Read
   const markReadMutation = useMutation({
@@ -71,11 +121,11 @@ export default function NotificationsPage() {
     mutationFn: async () => await api.put('/notifications/read-all'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success("All notifications marked as read");
+      toast.success("All database notifications marked as read");
     }
   });
 
-  // 3. Delete Notification
+  // 3. Delete Notification from DB
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => await api.delete(`/notifications/${id}`),
     onSuccess: () => {
@@ -84,7 +134,30 @@ export default function NotificationsPage() {
     }
   });
 
+  // Dismiss / remove an offline SMS transaction alert from SharedPreferences
+  const dismissOfflineSms = async (smsBody: string) => {
+    try {
+      const { registerPlugin } = await import("@capacitor/core");
+      const LuminaBridge = registerPlugin<any>('LuminaBridge');
+      const res = await LuminaBridge.getPendingSmsList();
+      if (res && res.smsList) {
+        const list = JSON.parse(res.smsList);
+        const filtered = list.filter((s: string) => s !== smsBody);
+        
+        await LuminaBridge.savePendingSmsList({ smsList: JSON.stringify(filtered) });
+        setOfflineSmsList(filtered);
+        toast.success("Transaction alert dismissed");
+      }
+    } catch (e) {
+      console.error("Failed to dismiss offline SMS:", e);
+    }
+  };
+
   const handleNotificationClick = (notif: any) => {
+    if (notif.metadata?.isOfflinePending) {
+      // Offline items shouldn't mark as read in db
+      return;
+    }
     if (!notif.isRead) {
       markReadMutation.mutate(notif._id);
     }
@@ -93,18 +166,16 @@ export default function NotificationsPage() {
     }
   };
 
+  const handleLog = (smsText: string) => {
+    router.push(`/dashboard/add?sms=${encodeURIComponent(smsText)}`);
+  };
+
   const getNotifIcon = (type: string) => {
     switch (type) {
       case "login":
         return (
           <div className="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-500 flex items-center justify-center border border-amber-500/20 shrink-0">
             <KeyRound className="w-5 h-5" />
-          </div>
-        );
-      case "transaction":
-        return (
-          <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0">
-            <CreditCard className="w-5 h-5" />
           </div>
         );
       case "system":
@@ -127,6 +198,27 @@ export default function NotificationsPage() {
         );
     }
   };
+
+  // Convert offline local pending SMS queue into mapped notification objects
+  const offlineNotifications = offlineSmsList.map((smsText, index) => {
+    const summary = getShortSummary(smsText);
+    return {
+      _id: `offline_${index}`,
+      title: "TRANSACTION SMS",
+      message: smsText,
+      type: "transaction",
+      createdAt: new Date().toISOString(),
+      isRead: false,
+      metadata: {
+        smsText,
+        isOfflinePending: true,
+        summary
+      }
+    };
+  });
+
+  // Combine lists with offline pending alerts showing first
+  const allNotifications = [...offlineNotifications, ...dbNotifications];
 
   if (!isMounted || !user) return null;
 
@@ -160,7 +252,7 @@ export default function NotificationsPage() {
         <div className="py-20 text-center">
           <p className="text-destructive font-medium">Failed to retrieve notifications. Please try again.</p>
         </div>
-      ) : notifications.length === 0 ? (
+      ) : allNotifications.length === 0 ? (
         <div className="py-24 flex flex-col items-center justify-center text-center gap-4 animate-in fade-in zoom-in-95 duration-500">
           <div className="w-16 h-16 rounded-[2rem] bg-card border border-border flex items-center justify-center shadow-lg relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem]" />
@@ -172,59 +264,117 @@ export default function NotificationsPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-3.5">
-          {notifications.map((notif) => (
-            <div 
-              key={notif._id}
-              className={`group flex items-start gap-4 p-4 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
-                notif.isRead 
-                  ? "bg-card/40 border-border/50 hover:bg-accent/40" 
-                  : "bg-primary/[0.03] border-primary/15 hover:bg-primary/[0.05]"
-              }`}
-              onClick={() => handleNotificationClick(notif)}
-            >
-              {/* Unread Indicator Bar */}
-              {!notif.isRead && (
-                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
-              )}
+        <div className="space-y-4">
+          {allNotifications.map((notif) => {
+            const isTransaction = notif.type === "transaction" || notif.metadata?.smsText;
 
-              {/* Dynamic Icon */}
-              {getNotifIcon(notif.type)}
+            // Render custom popup-card layout for Transaction SMS items
+            if (isTransaction) {
+              const smsText = notif.metadata?.smsText || notif.message;
+              const summary = notif.metadata?.summary || getShortSummary(smsText);
+              
+              return (
+                <div 
+                  key={notif._id}
+                  className={`glass-card bg-card/90 backdrop-blur-2xl border border-primary/20 shadow-lg rounded-2xl p-4 flex gap-4 items-center relative overflow-hidden animate-in fade-in duration-300 ${
+                    notif.metadata?.isOfflinePending ? "ring-1 ring-primary/30" : ""
+                  }`}
+                >
+                  {/* Glow effect */}
+                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
+                  
+                  {/* Glowing left message icon */}
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
 
-              {/* Text content details */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2">
-                  <h4 className={`text-sm font-bold text-foreground leading-snug truncate ${!notif.isRead ? 'text-primary font-black' : ''}`}>
-                    {notif.title}
-                  </h4>
-                  <span className="text-[10px] text-muted-foreground/60 font-mono shrink-0">
-                    {formatRelativeTime(notif.createdAt)}
-                  </span>
+                  {/* Text details */}
+                  <div className="flex-1 min-w-0 pr-2">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">
+                      {notif.metadata?.isOfflinePending ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}
+                    </p>
+                    <h4 className="text-xs font-bold text-foreground leading-tight truncate">{summary}</h4>
+                    <p className="text-[9px] text-muted-foreground truncate mt-0.5">{smsText}</p>
+                  </div>
+
+                  {/* Action buttons matching the overlay popup */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button 
+                      onClick={() => handleLog(smsText)}
+                      className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
+                      title="Log transaction"
+                    >
+                      <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                    </button>
+                    
+                    <button 
+                      onClick={() => {
+                        if (notif.metadata?.isOfflinePending) {
+                          dismissOfflineSms(smsText);
+                        } else {
+                          deleteMutation.mutate(notif._id);
+                        }
+                      }}
+                      className="w-8 h-8 rounded-lg bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-95 transition-all"
+                      title="Dismiss alert"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
-                  {notif.message}
-                </p>
-                {notif.actionUrl && (
-                  <span className="text-[10px] text-primary/80 font-bold tracking-wide uppercase hover:underline inline-block mt-2">
-                    View Activity &rarr;
-                  </span>
-                )}
-              </div>
+              );
+            }
 
-              {/* Delete Button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteMutation.mutate(notif._id);
-                }}
-                disabled={deleteMutation.isPending}
-                className="w-8 h-8 rounded-xl bg-accent/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all shrink-0 active:scale-90"
-                title="Delete notification"
+            // Render standard security/system alerts layout
+            return (
+              <div 
+                key={notif._id}
+                className={`group flex items-start gap-4 p-4 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
+                  notif.isRead 
+                    ? "bg-card/40 border-border/50 hover:bg-accent/40" 
+                    : "bg-primary/[0.03] border-primary/15 hover:bg-primary/[0.05]"
+                }`}
+                onClick={() => handleNotificationClick(notif)}
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
+                {!notif.isRead && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
+                )}
+
+                {getNotifIcon(notif.type)}
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <h4 className={`text-sm font-bold text-foreground leading-snug truncate ${!notif.isRead ? 'text-primary font-black' : ''}`}>
+                      {notif.title}
+                    </h4>
+                    <span className="text-[10px] text-muted-foreground/60 font-mono shrink-0">
+                      {formatRelativeTime(notif.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
+                    {notif.message}
+                  </p>
+                  {notif.actionUrl && (
+                    <span className="text-[10px] text-primary/80 font-bold tracking-wide uppercase hover:underline inline-block mt-2">
+                      View Activity &rarr;
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteMutation.mutate(notif._id);
+                  }}
+                  disabled={deleteMutation.isPending}
+                  className="w-8 h-8 rounded-xl bg-accent/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all shrink-0 active:scale-90"
+                  title="Delete notification"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

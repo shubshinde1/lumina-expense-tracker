@@ -59,4 +59,16 @@ public class LuminaBridgePlugin extends Plugin {
         prefs.edit().remove("pendingSmsList").apply();
         call.resolve();
     }
+
+    @PluginMethod
+    public void savePendingSmsList(PluginCall call) {
+        String smsListJson = call.getString("smsList");
+        if (smsListJson == null) {
+            call.reject("smsList is required");
+            return;
+        }
+        SharedPreferences prefs = getContext().getSharedPreferences("LuminaPrefs", Context.MODE_PRIVATE);
+        prefs.edit().putString("pendingSmsList", smsListJson).apply();
+        call.resolve();
+    }
 }

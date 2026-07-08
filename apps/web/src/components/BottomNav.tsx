@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, PieChart, PlusCircle, LayoutList, Bell, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { Home, PieChart, PlusCircle, LayoutList, Bell, ArrowDownRight, ArrowUpRight, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -23,7 +23,7 @@ export default function BottomNav() {
     queryKey: ['notifications'],
     queryFn: async () => {
       const response = await api.get('/notifications');
-      return response.data;
+      return response.data || [];
     },
     refetchInterval: 15000,
     refetchIntervalInBackground: true,
@@ -40,18 +40,48 @@ export default function BottomNav() {
 
       if (newUnread.length > 0) {
         const latest = newUnread[0];
-        toast(latest.title, {
-          description: latest.message,
-          action: latest.actionUrl ? {
-            label: "View",
-            onClick: () => {
-              api.put(`/notifications/${latest._id}/read`).then(() => {
-                queryClient.invalidateQueries({ queryKey: ['notifications'] });
-              });
-              router.push(latest.actionUrl);
-            }
-          } : undefined
-        });
+        toast.custom((t) => (
+          <div className="bg-[#131315]/95 backdrop-blur-md border border-[#48474a]/60 rounded-2xl p-3 shadow-2xl flex items-center justify-between gap-3 max-w-sm w-[92vw] mx-auto animate-in slide-in-from-top-10 duration-300">
+            <div className="flex items-center gap-2.5 flex-1 min-w-0">
+              {/* Icon */}
+              <div className="w-8.5 h-8.5 rounded-xl bg-[#6bfe9c]/10 flex items-center justify-center text-[#6bfe9c] border border-[#6bfe9c]/20 shrink-0">
+                <Bell className="w-4 h-4" />
+              </div>
+              {/* Text details */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <span className="text-[9px] font-black text-zinc-400 uppercase tracking-wider">Lumina App</span>
+                  <span className="text-[9px] text-zinc-500 font-medium">now</span>
+                </div>
+                <h4 className="text-xs font-bold text-white truncate">{latest.title}</h4>
+                <p className="text-[10px] text-zinc-400 line-clamp-2 mt-0.5">{latest.message}</p>
+              </div>
+            </div>
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              {latest.actionUrl ? (
+                <button
+                  onClick={() => {
+                    toast.dismiss(t);
+                    api.put(`/notifications/${latest._id}/read`).then(() => {
+                      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+                    });
+                    router.push(latest.actionUrl);
+                  }}
+                  className="px-2.5 py-1.5 bg-[#6bfe9c] text-[#004a23] text-[9px] font-black uppercase tracking-wider rounded-lg transition-transform active:scale-95 cursor-pointer"
+                >
+                  View
+                </button>
+              ) : null}
+              <button
+                onClick={() => toast.dismiss(t)}
+                className="p-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        ));
 
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           navigator.vibrate([100, 50, 100]);

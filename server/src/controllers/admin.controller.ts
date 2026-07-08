@@ -415,14 +415,20 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
 // @route   POST /api/admin/broadcast
 // @access  Private/Admin
 export const sendBroadcast = async (req: AuthRequest, res: Response) => {
-  const { subject, message, target } = req.body;
+  const { subject, message, target, channels = 'both' } = req.body;
 
   if (!subject || !message) {
     return res.status(400).json({ message: "Subject and message are required" });
   }
 
   try {
-    const filter = target === 'premium' ? { plan: 'premium', isSuspended: false } : { isSuspended: false };
+    let filter: any = { isSuspended: false };
+    if (target === 'premium') {
+      filter.plan = 'premium';
+    } else if (target !== 'all' && target) {
+      filter._id = target;
+    }
+
     const users = await User.find(filter).select("email");
     const emails = users.map(u => u.email);
 
@@ -430,18 +436,22 @@ export const sendBroadcast = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "No recipients found for the selected target" });
     }
 
-    // Send broadcast email notifications
-    await sendBroadcastEmail(emails, subject, message);
+    // Send broadcast email notifications if format is both or email
+    if (channels === 'both' || channels === 'email') {
+      await sendBroadcastEmail(emails, subject, message);
+    }
 
-    // Create in-app system notifications for the recipients in the database
-    const systemNotifications = users.map(u => ({
-      user: u._id,
-      title: subject,
-      message: message,
-      type: "system",
-      actionUrl: "/dashboard"
-    }));
-    await Notification.insertMany(systemNotifications);
+    // Create in-app system notifications if format is both or in_app
+    if (channels === 'both' || channels === 'in_app') {
+      const systemNotifications = users.map(u => ({
+        user: u._id,
+        title: subject,
+        message: message,
+        type: "system",
+        actionUrl: "/dashboard"
+      }));
+      await Notification.insertMany(systemNotifications);
+    }
 
     res.json({ message: `Broadcast sent to ${emails.length} users successfully` });
   } catch (error: any) {

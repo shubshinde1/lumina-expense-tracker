@@ -119,7 +119,8 @@ export const authUser = async (req: Request, res: Response) => {
         return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
       }
 
-      // Create a login notification security alert
+      // Create a login notification security alert (Disabled per user request)
+      /*
       await Notification.create({
         user: user._id,
         title: "New Login Detected",
@@ -130,6 +131,7 @@ export const authUser = async (req: Request, res: Response) => {
           ip: req.ip || "unknown"
         }
       });
+      */
 
       res.json({
         _id: user._id,

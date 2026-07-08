@@ -2,6 +2,7 @@ import { Response } from "express";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { Transaction } from "../models/Transaction";
 import { Category } from "../models/Category";
+import { Notification } from "../models/Notification";
 
 export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
   try {
@@ -376,6 +377,20 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
       category: parsed.category,
       subcategory: parsed.subcategory || undefined,
       paymentMode: parsed.paymentMode
+    });
+
+    // Create an auto-log transaction notification alert in the database
+    await Notification.create({
+      user: userId,
+      title: "Transaction Auto-Logged",
+      message: `Logged ${parsed.type === 'income' ? 'income' : 'spend'} of ₹${parsed.amount} at ${parsed.description} automatically via SMS.`,
+      type: "transaction",
+      actionUrl: "/dashboard/history",
+      metadata: {
+        amount: parsed.amount.toString(),
+        description: parsed.description,
+        type: parsed.type
+      }
     });
 
     const populated = await Transaction.findById(transaction._id)

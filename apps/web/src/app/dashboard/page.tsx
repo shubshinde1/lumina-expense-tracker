@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, ArrowDownRight, Wallet, Loader2, ChevronRight, TrendingDown, TrendingUp, Plus, PieChart, LayoutList, MapPin } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Wallet, Loader2, ChevronRight, TrendingDown, TrendingUp, Plus, PieChart, LayoutList, MapPin, Settings } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import Link from "next/link";
@@ -157,9 +157,14 @@ export default function DashboardPage() {
             {getGreeting()}, <span className="text-primary">{firstName}</span>
           </h1>
         </div>
-        <div className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm overflow-hidden relative group cursor-pointer ring-1 ring-border/50">
-           <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-           <span className="font-heading font-bold text-primary group-hover:scale-110 transition-transform">{firstName[0]}</span>
+        <div className="flex items-center gap-3">
+          <Link href="/dashboard/settings" className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm hover:bg-accent/50 transition-colors" title="Settings">
+            <Settings className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
+          </Link>
+          <Link href="/dashboard/settings" className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm overflow-hidden relative group cursor-pointer ring-1 ring-border/50" title="Profile Settings">
+             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+             <span className="font-heading font-bold text-primary group-hover:scale-110 transition-transform">{firstName[0]}</span>
+          </Link>
         </div>
       </header>
 

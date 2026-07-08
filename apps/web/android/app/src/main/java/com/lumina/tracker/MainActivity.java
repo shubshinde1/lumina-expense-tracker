@@ -16,15 +16,27 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         SmsReceiver.setMainActivity(this);
 
-        // Runtime permission check for RECEIVE_SMS and RECORD_AUDIO
+        // Runtime permission check for RECEIVE_SMS, RECORD_AUDIO and POST_NOTIFICATIONS
         boolean hasSms = ContextCompat.checkSelfPermission(this, Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED;
         boolean hasAudio = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
+        boolean hasNotifications = true;
+        if (android.os.Build.VERSION.SDK_INT >= 33) {
+            hasNotifications = ContextCompat.checkSelfPermission(this, "android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+        }
         
-        if (!hasSms || !hasAudio) {
-            ActivityCompat.requestPermissions(this, new String[]{
-                Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.RECORD_AUDIO
-            }, SMS_PERMISSION_CODE);
+        if (!hasSms || !hasAudio || !hasNotifications) {
+            if (android.os.Build.VERSION.SDK_INT >= 33) {
+                ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.RECORD_AUDIO,
+                    "android.permission.POST_NOTIFICATIONS"
+                }, SMS_PERMISSION_CODE);
+            } else {
+                ActivityCompat.requestPermissions(this, new String[]{
+                    Manifest.permission.RECEIVE_SMS,
+                    Manifest.permission.RECORD_AUDIO
+                }, SMS_PERMISSION_CODE);
+            }
         }
     }
 

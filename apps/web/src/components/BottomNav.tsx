@@ -2,17 +2,64 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, PieChart, PlusCircle, LayoutList, Settings, ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { useState } from "react";
+import { Home, PieChart, PlusCircle, LayoutList, Bell, ArrowDownRight, ArrowUpRight } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   
   // Hold & Swipe detection logic
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [isHolding, setIsHolding] = useState(false);
   const [dragSelection, setDragSelection] = useState<"expense" | "income" | null>(null);
+
+  // Background poll notifications
+  const { data: notifications = [] } = useQuery<any[]>({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const response = await api.get('/notifications');
+      return response.data;
+    },
+    refetchInterval: 15000,
+    refetchIntervalInBackground: true,
+  });
+
+  const unreadCount = notifications.filter((n: any) => !n.isRead).length;
+  const prevNotifsRef = useRef<string[]>([]);
+
+  // Real-time Toast Alerts for new incoming notifications
+  useEffect(() => {
+    if (notifications.length > 0) {
+      const currentUnread = notifications.filter((n: any) => !n.isRead);
+      const newUnread = currentUnread.filter(n => !prevNotifsRef.current.includes(n._id));
+
+      if (newUnread.length > 0) {
+        const latest = newUnread[0];
+        toast(latest.title, {
+          description: latest.message,
+          action: latest.actionUrl ? {
+            label: "View",
+            onClick: () => {
+              api.put(`/notifications/${latest._id}/read`).then(() => {
+                queryClient.invalidateQueries({ queryKey: ['notifications'] });
+              });
+              router.push(latest.actionUrl);
+            }
+          } : undefined
+        });
+
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+          navigator.vibrate([100, 50, 100]);
+        }
+      }
+      prevNotifsRef.current = notifications.map((n: any) => n._id);
+    }
+  }, [notifications, router, queryClient]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
@@ -100,19 +147,24 @@ export default function BottomNav() {
         </li>
 
         <NavItem href="/dashboard/history" icon={<LayoutList />} label="History" active={pathname.startsWith("/dashboard/history") || pathname.startsWith("/dashboard/edit")} />
-        <NavItem href="/dashboard/settings" icon={<Settings />} label="Settings" active={pathname.startsWith("/dashboard/settings")} />
+        <NavItem href="/dashboard/notifications" icon={<Bell />} label="Notifications" active={pathname.startsWith("/dashboard/notifications")} badgeCount={unreadCount} />
       </ul>
     </nav>
   );
 }
 
-function NavItem({ href, icon, label, active }: { href: string; icon: React.ReactNode; label: string; active: boolean }) {
+function NavItem({ href, icon, label, active, badgeCount }: { href: string; icon: React.ReactNode; label: string; active: boolean; badgeCount?: number }) {
   return (
     <li>
-      <Link href={href} className="flex flex-col items-center justify-center space-y-1 w-12 group transition-all">
+      <Link href={href} className="flex flex-col items-center justify-center space-y-1 w-12 group transition-all relative">
         <div className={`transition-colors ${active ? "text-primary" : "text-muted-foreground group-hover:text-primary"}`}>
           {icon}
         </div>
+        {badgeCount !== undefined && badgeCount > 0 && (
+          <span className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-primary text-black font-heading font-black text-[8px] flex items-center justify-center border border-card shadow-[0_2px_8px_rgba(107,254,156,0.3)]">
+            {badgeCount}
+          </span>
+        )}
         <span className={`text-[10px] font-bold  transition-colors ${active ? "text-primary" : "text-muted-foreground/50 group-hover:text-primary"}`}>
           {label}
         </span>

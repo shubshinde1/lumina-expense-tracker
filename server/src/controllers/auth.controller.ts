@@ -4,6 +4,7 @@ import { Category } from "../models/Category";
 import { Otp } from "../models/Otp";
 import { generateToken } from "../utils/generateToken";
 import { sendOtpEmail } from "../utils/mailer";
+import { Notification } from "../models/Notification";
 
 // Random 6 digit generator helper
 const generateOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -117,6 +118,18 @@ export const authUser = async (req: Request, res: Response) => {
       if (user.isSuspended) {
         return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
       }
+
+      // Create a login notification security alert
+      await Notification.create({
+        user: user._id,
+        title: "New Login Detected",
+        message: `Logged in successfully on device: ${req.headers["user-agent"] || "unknown"}`,
+        type: "login",
+        metadata: {
+          userAgent: req.headers["user-agent"] || "unknown",
+          ip: req.ip || "unknown"
+        }
+      });
 
       res.json({
         _id: user._id,

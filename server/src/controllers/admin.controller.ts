@@ -5,6 +5,7 @@ import { Category } from "../models/Category";
 import { Transaction } from "../models/Transaction";
 import { AuthRequest } from "../middleware/auth.middleware";
 import { sendBroadcastEmail } from "../utils/mailer";
+import { Notification } from "../models/Notification";
 
 // @desc    Get all users
 // @route   GET /api/admin/users
@@ -384,7 +385,18 @@ export const sendBroadcast = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "No recipients found for the selected target" });
     }
 
+    // Send broadcast email notifications
     await sendBroadcastEmail(emails, subject, message);
+
+    // Create in-app system notifications for the recipients in the database
+    const systemNotifications = users.map(u => ({
+      user: u._id,
+      title: subject,
+      message: message,
+      type: "system",
+      actionUrl: "/dashboard"
+    }));
+    await Notification.insertMany(systemNotifications);
 
     res.json({ message: `Broadcast sent to ${emails.length} users successfully` });
   } catch (error: any) {

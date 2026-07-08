@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowUpRight, ArrowDownRight, Wallet, Loader2, ChevronRight, TrendingDown, TrendingUp, Plus, PieChart, LayoutList, MapPin } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
@@ -26,6 +26,7 @@ function getGreeting() {
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isMounted, setIsMounted] = useState(false);
 
   const { data, isLoading, error } = useQuery<DashboardData>({
@@ -42,6 +43,87 @@ export default function DashboardPage() {
       router.push("/");
     }
   }, [user, router, isMounted]);
+
+  // Sync user session to native Android SharedPreferences on dashboard mount (as a fail-safe)
+  useEffect(() => {
+    const syncSessionToNative = async () => {
+      try {
+        const isCapacitor = typeof window !== 'undefined' && 
+          (window.location.origin.startsWith('capacitor://') || 
+          (window.location.hostname === 'localhost' && !window.location.port));
+        if (isCapacitor && user) {
+          const { registerPlugin } = await import("@capacitor/core");
+          const LuminaBridge = registerPlugin<any>('LuminaBridge');
+          
+          const getBaseURL = () => {
+            if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+            return 'https://lumina-expense-tracker-85ym.vercel.app/api';
+          };
+          
+          await LuminaBridge.saveUserSession({
+            token: user.token,
+            email: user.email,
+            apiUrl: getBaseURL()
+          });
+          console.log("✅ Synced active auth session to native storage from Dashboard");
+        }
+      } catch (err) {
+        console.warn("⚠️ Failed to sync session to native from Dashboard:", err);
+      }
+    };
+
+    if (user && isMounted) {
+      syncSessionToNative();
+    }
+  }, [user, isMounted]);
+
+  // Sync background offline transaction alerts collected by SmsReceiver
+  useEffect(() => {
+    const checkAndSyncPendingSms = async () => {
+      try {
+        const isCapacitor = typeof window !== 'undefined' && 
+          (window.location.origin.startsWith('capacitor://') || 
+          (window.location.hostname === 'localhost' && !window.location.port));
+        if (!isCapacitor) return;
+
+        const { registerPlugin } = await import("@capacitor/core");
+        const LuminaBridge = registerPlugin<any>('LuminaBridge');
+        
+        const res = await LuminaBridge.getPendingSmsList();
+        if (res && res.smsList) {
+          const smsList = JSON.parse(res.smsList);
+          if (smsList && smsList.length > 0) {
+            console.log(`Found ${smsList.length} offline pending SMS messages to sync.`);
+            
+            let successCount = 0;
+            const { toast } = await import("sonner");
+            
+            for (const smsText of smsList) {
+              try {
+                await api.post('/transactions/auto-log', { smsText });
+                successCount++;
+              } catch (err) {
+                console.error("Failed to sync offline SMS:", smsText, err);
+              }
+            }
+            
+            await LuminaBridge.clearPendingSmsList();
+            
+            if (successCount > 0) {
+              toast.success(`Synchronized ${successCount} background offline transaction(s)!`);
+              queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Offline pending SMS sync failed:", e);
+      }
+    };
+
+    if (user && isMounted) {
+      checkAndSyncPendingSms();
+    }
+  }, [user, isMounted, queryClient]);
 
   if (!isMounted || !user) return null;
   

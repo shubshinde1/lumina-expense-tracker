@@ -195,15 +195,60 @@ export const getPlatformStats = async (req: AuthRequest, res: Response) => {
 // @desc    Get all transactions across platform
 // @route   GET /api/admin/transactions
 // @access  Private/Admin
-export const getAllTransactions = async (req: AuthRequest, res: Response) => {
+export const getAllTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const transactions = await Transaction.find()
-      .sort({ date: -1 })
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const { userId, type, startDate, endDate, sortBy = 'date', sortOrder = 'desc' } = req.query;
+
+    const query: any = {};
+
+    if (userId) {
+      query.user = userId;
+    }
+
+    if (type && type !== 'all') {
+      query.type = type;
+    }
+
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) {
+        query.date.$gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        query.date.$lte = end;
+      }
+    }
+
+    const sort: any = {};
+    const order = sortOrder === 'asc' ? 1 : -1;
+    if (sortBy === 'amount') {
+      sort.amount = order;
+    } else {
+      sort.date = order;
+    }
+
+    const total = await Transaction.countDocuments(query);
+    const transactions = await Transaction.find(query)
+      .sort(sort)
+      .skip(skip)
+      .limit(limit)
       .populate('user', 'name email')
       .populate('category', 'name icon color');
-    res.json(transactions);
-  } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+
+    res.json({
+      transactions,
+      total,
+      page,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: "Server Error: " + error.message });
   }
 };
 

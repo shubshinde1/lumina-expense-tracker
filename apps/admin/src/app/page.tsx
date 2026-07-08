@@ -34,11 +34,11 @@ export default function AdminLogin() {
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4">
-      <div className="w-full max-w-sm p-8 rounded-3xl bg-[#131315] border border-[#48474a]">
+      <div className="w-full max-w-sm p-8 rounded-lg bg-[#131315] border border-[#48474a]">
         <h1 className="text-2xl font-bold text-[#6bfe9c] mb-6  text-center">Lumina Admin Config</h1>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl text-sm text-center">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-sm text-center">
             {error}
           </div>
         )}
@@ -48,7 +48,7 @@ export default function AdminLogin() {
             <label className="text-xs uppercase  text-zinc-400 font-medium mb-1.5 block">Admin Email</label>
             <input
               type="email"
-              className="w-full bg-[#1f1f22] border border-[#48474a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
+              className="w-full bg-[#1f1f22] border border-[#48474a] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -58,7 +58,7 @@ export default function AdminLogin() {
             <label className="text-xs uppercase  text-zinc-400 font-medium mb-1.5 block">Password</label>
             <input
               type="password"
-              className="w-full bg-[#1f1f22] border border-[#48474a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
+              className="w-full bg-[#1f1f22] border border-[#48474a] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -66,7 +66,7 @@ export default function AdminLogin() {
           </div>
           <button
             type="submit"
-            className="w-full bg-[#6bfe9c] text-[#004a23] font-bold py-3 rounded-xl mt-4 hover:bg-[#6bfe9c]/90 transition-colors"
+            className="w-full bg-[#6bfe9c] text-[#004a23] font-bold py-3 rounded-lg mt-4 hover:bg-[#6bfe9c]/90 transition-colors"
           >
             Authenticate
           </button>

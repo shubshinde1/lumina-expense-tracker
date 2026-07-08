@@ -45,7 +45,7 @@ export default function BroadcastPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-[#1f1f22]/60 backdrop-blur-xl border border-[#48474a] p-8 rounded-3xl">
+          <div className="bg-[#1f1f22]/60 backdrop-blur-xl border border-[#48474a] p-8 rounded-lg">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Target Audience */}
               <div>
@@ -54,7 +54,7 @@ export default function BroadcastPage() {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, target: "all" })}
-                    className={`flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all ${
+                    className={`flex items-center justify-center gap-2 py-4 rounded-lg border transition-all ${
                       formData.target === "all"
                         ? "bg-[#6bfe9c]/10 border-[#6bfe9c] text-[#6bfe9c]"
                         : "bg-[#131315] border-[#48474a] text-zinc-500 hover:border-zinc-500"
@@ -65,7 +65,7 @@ export default function BroadcastPage() {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, target: "premium" })}
-                    className={`flex items-center justify-center gap-2 py-4 rounded-2xl border transition-all ${
+                    className={`flex items-center justify-center gap-2 py-4 rounded-lg border transition-all ${
                       formData.target === "premium"
                         ? "bg-amber-500/10 border-amber-500 text-amber-500"
                         : "bg-[#131315] border-[#48474a] text-zinc-500 hover:border-zinc-500"
@@ -84,7 +84,7 @@ export default function BroadcastPage() {
                   placeholder="e.g. New Feature Announcement"
                   value={formData.subject}
                   onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                  className="w-full bg-[#131315] border border-[#48474a] rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-[#6bfe9c] transition-all"
+                  className="w-full bg-[#131315] border border-[#48474a] rounded-lg px-5 py-4 text-white focus:outline-none focus:border-[#6bfe9c] transition-all"
                 />
               </div>
 
@@ -96,7 +96,7 @@ export default function BroadcastPage() {
                   placeholder="Type your broadcast message here..."
                   value={formData.message}
                   onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="w-full bg-[#131315] border border-[#48474a] rounded-2xl px-5 py-4 text-white resize-none focus:outline-none focus:border-[#6bfe9c] transition-all"
+                  className="w-full bg-[#131315] border border-[#48474a] rounded-lg px-5 py-4 text-white resize-none focus:outline-none focus:border-[#6bfe9c] transition-all"
                 />
               </div>
 
@@ -104,7 +104,7 @@ export default function BroadcastPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 bg-[#6bfe9c] text-[#004a23] font-black uppercase tracking-widest py-5 rounded-2xl hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(107,254,156,0.2)] disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3"
+                  className="flex-1 bg-[#6bfe9c] text-[#004a23] font-black uppercase tracking-widest py-5 rounded-lg hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(107,254,156,0.2)] disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-3 cursor-pointer"
                 >
                   {loading ? (
                     <span className="w-5 h-5 border-2 border-[#004a23]/30 border-t-[#004a23] rounded-full animate-spin" />
@@ -117,7 +117,7 @@ export default function BroadcastPage() {
                 <button
                    type="button"
                    onClick={() => setPreview(!preview)}
-                   className="px-8 bg-zinc-800 text-zinc-300 font-bold rounded-2xl border border-white/5 hover:bg-zinc-700 transition-colors"
+                   className="px-8 bg-zinc-800 text-zinc-300 font-bold rounded-lg border border-white/5 hover:bg-zinc-700 transition-colors cursor-pointer"
                 >
                     {preview ? "Hide Preview" : "Preview"}
                 </button>
@@ -128,7 +128,7 @@ export default function BroadcastPage() {
 
         <div className="space-y-6">
           {/* Info Card */}
-          <div className="bg-blue-500/5 border border-blue-500/20 p-6 rounded-3xl">
+          <div className="bg-blue-500/5 border border-blue-500/20 p-6 rounded-lg">
              <div className="flex items-center gap-3 text-blue-400 mb-4 font-bold uppercase text-xs">
                  <Info className="w-4 h-4" /> Broadcast Info
              </div>
@@ -144,11 +144,11 @@ export default function BroadcastPage() {
 
           {/* Real-time Preview Area */}
           {preview && (
-            <div className="bg-[#131315] border border-[#6bfe9c]/20 p-6 rounded-3xl animate-in fade-in zoom-in-95 duration-300">
+            <div className="bg-[#131315] border border-[#6bfe9c]/20 p-6 rounded-lg animate-in fade-in zoom-in-95 duration-300">
                 <div className="flex items-center gap-2 text-[#6bfe9c] mb-6 font-bold uppercase text-[10px]">
                     Live Preview
                 </div>
-                <div className="p-6 bg-[#09090b] rounded-2xl border border-[#27272a] shadow-2xl">
+                <div className="p-6 bg-[#09090b] rounded-lg border border-[#27272a] shadow-2xl">
                     <h2 className="text-[#6bfe9c] font-black text-lg mb-4">WEALTHY UPDATE</h2>
                     <div className="h-[1px] bg-[#27272a] mb-4" />
                     <p className="text-zinc-400 text-sm break-words whitespace-pre-wrap">

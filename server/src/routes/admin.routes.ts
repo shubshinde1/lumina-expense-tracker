@@ -36,5 +36,6 @@ router.route("/categories/:id").delete(protect, admin, deleteGlobalCategory);
 router.route("/stats").get(protect, admin, getPlatformStats);
 router.route("/transactions").get(protect, admin, getAllTransactions);
 router.route("/users/:id/analytics").get(protect, admin, getUserAnalytics);
+router.route("/broadcast").post(protect, admin, sendBroadcast);
 
 export default router;

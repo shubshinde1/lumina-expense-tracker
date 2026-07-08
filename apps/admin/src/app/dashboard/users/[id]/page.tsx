@@ -88,7 +88,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
         <div className="flex items-center gap-5">
-            <div className={`w-16 h-16 rounded-3xl ${data.user?.isSuspended ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-[#6bfe9c]/10 border-[#6bfe9c]/20 text-[#6bfe9c]'} border flex items-center justify-center transition-all`}>
+            <div className={`w-16 h-16 rounded-lg ${data.user?.isSuspended ? 'bg-red-500/10 border-red-500/20 text-red-400' : 'bg-[#6bfe9c]/10 border-[#6bfe9c]/20 text-[#6bfe9c]'} border flex items-center justify-center transition-all`}>
                 {data.user?.isSuspended ? <ShieldAlert className="w-8 h-8" /> : <User className="w-8 h-8" />}
             </div>
             <div>
@@ -109,7 +109,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                 </div>
             </div>
         </div>
-        <div className="flex items-center gap-3 bg-[#131315] p-4 rounded-2xl border border-[#48474a]">
+        <div className="flex items-center gap-3 bg-[#131315] p-4 rounded-lg border border-[#48474a]">
             <Calendar className="w-4 h-4 text-zinc-500" />
             <span className="text-sm text-zinc-300">Data visualization for last 6 months</span>
         </div>
@@ -118,7 +118,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-12">
         <div className="lg:col-span-3 space-y-8">
             {/* Trend Chart */}
-            <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-3xl p-8">
+            <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-lg p-8">
                 <div className="flex justify-between items-center mb-8">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
                         Spending Trends <TrendingUp className="w-4 h-4 text-[#6bfe9c]" />
@@ -143,7 +143,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                                 tickFormatter={(value) => `₹${value}`}
                             />
                             <Tooltip 
-                                contentStyle={{ backgroundColor: '#131315', border: '1px solid #48474a', borderRadius: '12px' }}
+                                contentStyle={{ backgroundColor: '#131315', border: '1px solid #48474a', borderRadius: '8px' }}
                                 itemStyle={{ fontSize: '12px' }}
                             />
                             <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
@@ -155,7 +155,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
             </div>
 
             {/* Category Distribution */}
-            <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-3xl p-8">
+            <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-lg p-8">
                 <h3 className="text-lg font-bold text-white mb-8 flex items-center gap-2">
                     Categories <LayoutGrid className="w-4 h-4 text-blue-400" />
                 </h3>
@@ -176,7 +176,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                                 ))}
                             </Pie>
                             <Tooltip 
-                                contentStyle={{ backgroundColor: '#131315', border: '1px solid #48474a', borderRadius: '12px' }}
+                                contentStyle={{ backgroundColor: '#131315', border: '1px solid #48474a', borderRadius: '8px' }}
                             />
                         </PieChart>
                     </ResponsiveContainer>
@@ -197,7 +197,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
 
         {/* Sidebar Quick Actions */}
         <div className="space-y-6">
-            <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-3xl p-8 sticky top-8">
+            <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-lg p-8 sticky top-8">
                 <h3 className="text-lg font-bold text-white mb-6 flex items-center gap-2">
                     Quick Actions <ShieldCheck className="w-4 h-4 text-[#6bfe9c]" />
                 </h3>
@@ -208,7 +208,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                         <label className="text-xs uppercase text-zinc-500 font-bold mb-3 block">Account Access</label>
                         <button 
                             onClick={toggleSuspension}
-                            className={`w-full py-3 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 border ${data.user?.isSuspended ? 'bg-green-500/10 border-green-500/20 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'}`}
+                            className={`w-full py-3 rounded-lg font-bold transition-all text-sm flex items-center justify-center gap-2 border ${data.user?.isSuspended ? 'bg-green-500/10 border-green-500/20 text-green-500 hover:bg-green-500/20' : 'bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20'}`}
                         >
                             {data.user?.isSuspended ? (
                                 <><ShieldCheck className="w-4 h-4" /> Activate User</>
@@ -224,7 +224,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                     {/* Plan Toggle */}
                     <div className="pt-6 border-t border-[#48474a]/30">
                         <label className="text-xs uppercase text-zinc-500 font-bold mb-3 block">Subscription Plan</label>
-                        <div className="flex gap-2 p-1 bg-[#131315] rounded-xl border border-[#48474a]">
+                        <div className="flex gap-2 p-1 bg-[#131315] rounded-lg border border-[#48474a]">
                             <button 
                                 onClick={() => updatePlan('free')}
                                 className={`flex-1 py-2 text-[10px] font-bold rounded-lg transition-all ${data.user?.plan === 'free' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-500 hover:text-white'}`}
@@ -249,7 +249,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                                 type="password" 
                                 id="new_pass_input"
                                 placeholder="New password" 
-                                className="w-full bg-[#131315] border border-[#48474a] rounded-xl pl-10 pr-4 py-3 text-xs text-white focus:outline-none focus:border-[#6bfe9c] transition-all"
+                                className="w-full bg-[#131315] border border-[#48474a] rounded-lg pl-10 pr-4 py-3 text-xs text-white focus:outline-none focus:border-[#6bfe9c] transition-all"
                             />
                         </div>
                         <button 
@@ -258,7 +258,7 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                                 resetPassword(input.value);
                                 input.value = '';
                             }}
-                            className="w-full mt-3 bg-zinc-800 text-zinc-300 py-3 rounded-xl text-[10px] font-bold hover:bg-zinc-700 transition-colors border border-white/5"
+                            className="w-full mt-3 bg-zinc-800 text-zinc-300 py-3 rounded-lg text-[10px] font-bold hover:bg-zinc-700 transition-colors border border-white/5 cursor-pointer"
                         >
                             UPDATE PASSWORD
                         </button>
@@ -269,66 +269,68 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
       </div>
 
       {/* Transaction History */}
-      <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-3xl overflow-hidden mt-8">
+      <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-lg overflow-hidden mt-8">
         <div className="p-6 border-b border-[#48474a]/50 flex justify-between items-center">
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 Personal History <Receipt className="w-4 h-4 text-zinc-500" />
             </h3>
             <span className="text-xs text-zinc-500 font-medium">{data.history.length || 0} Transactions Found</span>
         </div>
-        <table className="w-full text-left">
-            <thead className="bg-[#2c2c2f]/50 text-[10px] uppercase text-zinc-400 tracking-wider">
-              <tr>
-                <th className="px-6 py-4 font-bold">Category</th>
-                <th className="px-6 py-4 font-bold">Description</th>
-                <th className="px-6 py-4 font-bold">Date</th>
-                <th className="px-6 py-4 font-bold text-center">Location</th>
-                <th className="px-6 py-4 font-bold text-right">Amount</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#48474a]/30">
-                {data.history.map((t: any) => (
-                    <tr key={t._id} className="hover:bg-[#252528]/50 transition-colors">
-                         <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-lg bg-[#131315] border border-[#48474a] flex items-center justify-center">
-                                    <span className="material-symbols-outlined text-[16px]" style={{ color: t.category?.color || '#6bfe9c' }}>
-                                        {t.category?.icon || 'receipt_long'}
-                                    </span>
-                                </div>
-                                <span className="text-zinc-300 text-xs font-semibold">{t.category?.name}</span>
-                            </div>
-                        </td>
-                        <td className="px-6 py-4 text-zinc-400 text-xs italic">{t.description || "---"}</td>
-                        <td className="px-6 py-4 text-zinc-500 text-[11px]">
-                            {new Date(t.date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                            {t.location?.lat ? (
-                                <a 
-                                    href={`https://www.google.com/maps?q=${t.location.lat},${t.location.lng}`} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="flex items-center justify-center gap-1.5 text-blue-400 hover:text-blue-300 transition-colors group"
-                                >
-                                    <MapPin className="w-3 h-3 group-hover:scale-110 transition-transform" />
-                                    <span className="text-[10px] font-bold underline underline-offset-4 decoration-blue-400/30 truncate max-w-[80px]">
-                                        {t.location.address || 'View Map'}
-                                    </span>
-                                </a>
-                            ) : (
-                                <span className="text-zinc-600 text-[10px]">---</span>
-                            )}
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                             <span className={`text-xs font-bold ${t.type === 'income' ? 'text-[#6bfe9c]' : 'text-red-400'}`}>
-                                {t.type === 'income' ? '+' : '-'}₹{t.amount.toLocaleString()}
-                            </span>
-                        </td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[650px]">
+              <thead className="bg-[#2c2c2f]/50 text-[10px] uppercase text-zinc-400 tracking-wider">
+                <tr>
+                  <th className="px-6 py-4 font-bold">Category</th>
+                  <th className="px-6 py-4 font-bold">Description</th>
+                  <th className="px-6 py-4 font-bold">Date</th>
+                  <th className="px-6 py-4 font-bold text-center">Location</th>
+                  <th className="px-6 py-4 font-bold text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#48474a]/30">
+                  {data.history.map((t: any) => (
+                      <tr key={t._id} className="hover:bg-[#252528]/50 transition-colors">
+                           <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-lg bg-[#131315] border border-[#48474a] flex items-center justify-center">
+                                      <span className="material-symbols-outlined text-[16px]" style={{ color: t.category?.color || '#6bfe9c' }}>
+                                          {t.category?.icon || 'receipt_long'}
+                                      </span>
+                                  </div>
+                                  <span className="text-zinc-300 text-xs font-semibold">{t.category?.name}</span>
+                              </div>
+                          </td>
+                          <td className="px-6 py-4 text-zinc-400 text-xs italic">{t.description || "---"}</td>
+                          <td className="px-6 py-4 text-zinc-500 text-[11px]">
+                              {new Date(t.date).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                              {t.location?.lat ? (
+                                  <a 
+                                      href={`https://www.google.com/maps?q=${t.location.lat},${t.location.lng}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="flex items-center justify-center gap-1.5 text-blue-400 hover:text-blue-300 transition-colors group"
+                                  >
+                                      <MapPin className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                                      <span className="text-[10px] font-bold underline underline-offset-4 decoration-blue-400/30 truncate max-w-[80px]">
+                                          {t.location.address || 'View Map'}
+                                      </span>
+                                  </a>
+                              ) : (
+                                  <span className="text-zinc-600 text-[10px]">---</span>
+                              )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                               <span className={`text-xs font-bold ${t.type === 'income' ? 'text-[#6bfe9c]' : 'text-red-400'}`}>
+                                  {t.type === 'income' ? '+' : '-'}₹{t.amount.toLocaleString()}
+                              </span>
+                          </td>
+                      </tr>
+                  ))}
+              </tbody>
+          </table>
+        </div>
         {(!data.history || data.history.length === 0) && (
             <div className="text-center py-20 text-zinc-600 italic text-sm">
                 No transaction history for this user.

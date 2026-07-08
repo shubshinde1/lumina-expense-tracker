@@ -42,12 +42,12 @@ export default function DiagnosticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Form */}
           <div>
-            <form onSubmit={testLogin} className="space-y-6 bg-[#131315] p-8 rounded-3xl border border-[#48474a]">
+            <form onSubmit={testLogin} className="space-y-6 bg-[#131315] p-8 rounded-lg border border-[#48474a]">
               <div>
                 <label className="text-xs uppercase text-zinc-400 font-bold mb-2 block">Diagnostic Email</label>
                 <input
                   type="email"
-                  className="w-full bg-[#1f1f22] border border-[#48474a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
+                  className="w-full bg-[#1f1f22] border border-[#48474a] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -57,7 +57,7 @@ export default function DiagnosticsPage() {
                 <label className="text-xs uppercase text-zinc-400 font-bold mb-2 block">Diagnostic Password</label>
                 <input
                   type="password"
-                  className="w-full bg-[#1f1f22] border border-[#48474a] rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
+                  className="w-full bg-[#1f1f22] border border-[#48474a] rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -66,7 +66,7 @@ export default function DiagnosticsPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#6bfe9c] text-[#004a23] font-bold py-3 rounded-xl hover:bg-[#6bfe9c]/90 disabled:opacity-50 transition-all shadow-lg"
+                className="w-full bg-[#6bfe9c] text-[#004a23] font-bold py-3 rounded-lg hover:bg-[#6bfe9c]/90 disabled:opacity-50 transition-all shadow-lg"
               >
                 {loading ? "FETCHING DUMP..." : "TRIGGER DIAGNOSTIC LOGIN"}
               </button>
@@ -75,7 +75,7 @@ export default function DiagnosticsPage() {
 
           {/* Results Dump */}
           <div className="space-y-6">
-            <div className="bg-[#131315] rounded-3xl border border-[#48474a] overflow-hidden">
+            <div className="bg-[#131315] rounded-lg border border-[#48474a] overflow-hidden">
               <div className="bg-[#1f1f22] px-6 py-4 border-b border-[#48474a] flex justify-between items-center">
                 <span className="text-xs font-bold uppercase text-zinc-400">HTTP Response Status</span>
                 {status && (
@@ -92,7 +92,7 @@ export default function DiagnosticsPage() {
             </div>
 
             {response?.role && (
-              <div className={`p-4 rounded-2xl border ${response.role === 'admin' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+              <div className={`p-4 rounded-lg border ${response.role === 'admin' ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
                 <p className="text-xs uppercase font-bold text-zinc-500">Detected Role On Server</p>
                 <p className={`text-xl font-bold mt-1 ${response.role === 'admin' ? 'text-[#6bfe9c]' : 'text-red-400'}`}>
                   {response.role.toUpperCase()}

@@ -16,13 +16,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <h2 className="text-lg font-bold text-[#6bfe9c]">Lumina</h2>
             <button 
                 onClick={() => setIsSidebarOpen(true)}
-                className="p-2 rounded-xl bg-zinc-800 text-zinc-400 active:scale-95 transition-all"
+                className="p-2 rounded-lg bg-zinc-800 text-zinc-400 active:scale-95 transition-all"
             >
                 <Menu className="w-5 h-5" />
             </button>
         </header>
 
-        <div className="p-6 md:p-10 relative">
+        <div className="p-4 md:p-6 relative">
             <div className="absolute top-0 left-0 w-96 h-96 bg-[#6bfe9c]/5 rounded-full blur-[120px] pointer-events-none -z-10" />
             {children}
         </div>

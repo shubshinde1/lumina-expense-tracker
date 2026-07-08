@@ -48,11 +48,8 @@ export default function DashboardPage() {
   useEffect(() => {
     const syncSessionToNative = async () => {
       try {
-        const isCapacitor = typeof window !== 'undefined' && 
-          (window.location.origin.startsWith('capacitor://') || 
-          (window.location.hostname === 'localhost' && !window.location.port));
-        if (isCapacitor && user) {
-          const { registerPlugin } = await import("@capacitor/core");
+        const { Capacitor, registerPlugin } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform() && user) {
           const LuminaBridge = registerPlugin<any>('LuminaBridge');
           
           const getBaseURL = () => {
@@ -81,12 +78,9 @@ export default function DashboardPage() {
   useEffect(() => {
     const checkAndSyncPendingSms = async () => {
       try {
-        const isCapacitor = typeof window !== 'undefined' && 
-          (window.location.origin.startsWith('capacitor://') || 
-          (window.location.hostname === 'localhost' && !window.location.port));
-        if (!isCapacitor) return;
+        const { Capacitor, registerPlugin } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
 
-        const { registerPlugin } = await import("@capacitor/core");
         const LuminaBridge = registerPlugin<any>('LuminaBridge');
         
         const res = await LuminaBridge.getPendingSmsList();

@@ -23,11 +23,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Sync session to native Android SharedPreferences
     (async () => {
       try {
-        const isCapacitor = typeof window !== 'undefined' && 
-          (window.location.origin.startsWith('capacitor://') || 
-          (window.location.hostname === 'localhost' && !window.location.port));
-        if (isCapacitor && user) {
-          const { registerPlugin } = await import("@capacitor/core");
+        const { Capacitor, registerPlugin } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform() && user) {
           const LuminaBridge = registerPlugin<any>('LuminaBridge');
           
           const getBaseURL = () => {
@@ -55,11 +52,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Clear session from native Android SharedPreferences
     (async () => {
       try {
-        const isCapacitor = typeof window !== 'undefined' && 
-          (window.location.origin.startsWith('capacitor://') || 
-          (window.location.hostname === 'localhost' && !window.location.port));
-        if (isCapacitor) {
-          const { registerPlugin } = await import("@capacitor/core");
+        const { Capacitor, registerPlugin } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform()) {
           const LuminaBridge = registerPlugin<any>('LuminaBridge');
           await LuminaBridge.clearUserSession();
           console.log("🧹 Cleared native auth session");

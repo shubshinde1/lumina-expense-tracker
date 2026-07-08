@@ -71,4 +71,12 @@ public class LuminaBridgePlugin extends Plugin {
         prefs.edit().putString("pendingSmsList", smsListJson).apply();
         call.resolve();
     }
+
+    @PluginMethod
+    public void getLaunchRoute(PluginCall call) {
+        String route = MainActivity.getAndClearLaunchRoute();
+        JSObject ret = new JSObject();
+        ret.put("route", route);
+        call.resolve(ret);
+    }
 }

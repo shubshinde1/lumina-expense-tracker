@@ -79,9 +79,10 @@ public class SmsReceiver extends BroadcastReceiver {
         // If the user has not logged in, we cannot authenticate the request.
         // Prompt them to open the app and log in.
         if (token == null || apiUrl == null) {
-            Log.w("LuminaSmsReceiver", "No auth token or API URL found. Skipping auto-log.");
+            Log.w("LuminaSmsReceiver", "No auth token or API URL found. Saving locally.");
             double amount = parseAmountLocally(messageBody);
             String type = parseTypeLocally(messageBody);
+            savePendingSms(context, messageBody);
             showNotification(context, "Captured Transaction", 
                 "Detected " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + ". Log in to save directly.");
             return;
@@ -196,6 +197,7 @@ public class SmsReceiver extends BroadcastReceiver {
         
         Intent launchIntent = new Intent(context, MainActivity.class);
         launchIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        launchIntent.putExtra("route", "/dashboard/notifications");
         
         int pendingFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M 
             ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE 

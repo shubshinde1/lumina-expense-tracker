@@ -76,7 +76,9 @@ export default function NotificationsPage() {
   useEffect(() => {
     const fetchOfflineSms = async () => {
       try {
-        const { registerPlugin } = await import("@capacitor/core");
+        const { Capacitor, registerPlugin } = await import("@capacitor/core");
+        if (!Capacitor.isNativePlatform()) return;
+
         const LuminaBridge = registerPlugin<any>('LuminaBridge');
         const res = await LuminaBridge.getPendingSmsList();
         if (res && res.smsList) {

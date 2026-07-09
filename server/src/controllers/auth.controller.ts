@@ -121,19 +121,18 @@ export const authUser = async (req: Request, res: Response) => {
         return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
       }
 
-      // Create a login notification security alert (Disabled per user request)
-      /*
-      await Notification.create({
-        user: user._id,
-        title: "New Login Detected",
-        message: `Logged in successfully on device: ${req.headers["user-agent"] || "unknown"}`,
-        type: "login",
-        metadata: {
-          userAgent: req.headers["user-agent"] || "unknown",
-          ip: req.ip || "unknown"
-        }
-      });
-      */
+      if (user.role === "admin") {
+        await Otp.deleteMany({ email: user.email, type: "login" });
+        const code = generateOtpCode();
+        await Otp.create({ email: user.email, otp: code, type: "login" });
+        await sendOtpEmail(user.email, code, "login");
+
+        return res.status(200).json({
+          requiresOtp: true,
+          email: user.email,
+          message: "A login verification code has been sent to your email."
+        });
+      }
 
       res.json({
         _id: user._id,
@@ -147,6 +146,43 @@ export const authUser = async (req: Request, res: Response) => {
     } else {
       res.status(401).json({ message: "Invalid email or password" });
     }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const verifyAdminLoginOtp = async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ message: "Email and OTP code are required" });
+  }
+
+  try {
+    const validOtp = await Otp.findOne({ email, otp, type: "login" });
+    if (!validOtp) {
+      return res.status(400).json({ message: "Invalid or expired OTP. Please log in again." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "Admin user not found" });
+    }
+
+    if (user.isSuspended) {
+      return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
+    }
+
+    await Otp.deleteMany({ email, type: "login" });
+
+    res.status(200).json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      plan: user.plan,
+      role: user.role,
+      settings: (user as any).settings || { autoOpenKeyboard: true },
+      token: generateToken(user._id.toString()),
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

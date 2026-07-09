@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 const otpSchema = new mongoose.Schema({
   email: { type: String, required: true },
   otp: { type: String, required: true },
-  type: { type: String, enum: ["register", "reset"], required: true },
+  type: { type: String, enum: ["register", "reset", "login"], required: true },
   createdAt: { type: Date, default: Date.now, expires: 120 } // automatically delete after exactly 2 mins
 });
 

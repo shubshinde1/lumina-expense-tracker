@@ -2,16 +2,27 @@ import nodemailer from "nodemailer";
 
 // Render blocks standard SMTP ports (465/587). 
 // Using an API like Resend is the ONLY reliable way to send mail from Render.
-export const sendOtpEmail = async (email: string, otp: string, type: "register" | "reset") => {
+export const sendOtpEmail = async (email: string, otp: string, type: "register" | "reset" | "login") => {
   const resendApiKey = process.env.RESEND_API_KEY;
   const smtpUser = process.env.SMTP_USER;
   
-  const subject = type === "register" ? "Wealthy: Verify Your Registration" : "Wealthy: Reset Your Password";
+  const subject = type === "register" 
+    ? "Wealthy: Verify Your Registration" 
+    : type === "reset" 
+      ? "Wealthy: Reset Your Password" 
+      : "Wealthy: Admin Login Verification Code";
+
   const html = `
     <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 40px; background: #09090b; color: #ffffff; border-radius: 16px; border: 1px solid #27272a; max-width: 500px; margin: 0 auto;">
       <h2 style="color: #6bfe9c; letter-spacing: 3px; font-weight: 800; text-shadow: 0 0 20px rgba(107, 254, 156, 0.2);">WEALTHY</h2>
       <div style="height: 1px; background: linear-gradient(90deg, transparent, #27272a, transparent); margin: 20px 0;"></div>
-      <p style="color: #a1a1aa; font-size: 16px;">${type === 'register' ? 'To finalize your registration, use the code below:' : 'A password reset was requested. If this was not you, ignore this email.'}</p>
+      <p style="color: #a1a1aa; font-size: 16px;">
+        ${type === 'register' 
+          ? 'To finalize your registration, use the code below:' 
+          : type === 'reset' 
+            ? 'A password reset was requested. If this was not you, ignore this email.' 
+            : 'To complete your admin login authentication, please use the verification code below:'}
+      </p>
       
       <div style="font-size: 38px; font-weight: 900; background: #18181b; color: #6bfe9c; padding: 24px; border-radius: 12px; margin: 30px auto; width: fit-content; letter-spacing: 8px; border: 1px solid #3f3f46; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
         ${otp}

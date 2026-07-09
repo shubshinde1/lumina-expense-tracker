@@ -1,5 +1,5 @@
 import express from "express";
-import { registerUser, authUser, requestRegisterOtp, requestResetOtp, resetPassword, updateUserSettings } from "../controllers/auth.controller";
+import { registerUser, authUser, verifyAdminLoginOtp, requestRegisterOtp, requestResetOtp, resetPassword, updateUserSettings } from "../controllers/auth.controller";
 import { protect } from "../middleware/auth.middleware";
 
 const router = express.Router();
@@ -14,6 +14,7 @@ router.post("/reset", resetPassword);
 
 // Login Flow
 router.post("/login", authUser);
+router.post("/login/verify", verifyAdminLoginOtp);
 
 // User settings route
 router.put("/settings", protect as any, updateUserSettings);

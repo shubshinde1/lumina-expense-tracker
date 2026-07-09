@@ -5,7 +5,7 @@ import { Eye, EyeOff, Lock, Mail, Key, ArrowLeft, RefreshCw } from "lucide-react
 
 export default function AdminLogin() {
   const router = useRouter();
-  const [mode, setMode] = useState<'login' | 'forgot' | 'reset'>('login');
+  const [mode, setMode] = useState<'login' | 'forgot' | 'reset' | 'login_otp'>('login');
   
   // Login/Global states
   const [email, setEmail] = useState("");
@@ -13,6 +13,10 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // Login OTP states
+  const [loginOtp, setLoginOtp] = useState("");
+  const [loadingLoginOtp, setLoadingLoginOtp] = useState(false);
 
   // Forgot password states
   const [forgotEmail, setForgotEmail] = useState("");
@@ -46,6 +50,14 @@ export default function AdminLogin() {
 
       if (!res.ok) throw new Error(data.message || "Failed to login");
 
+      // Redirect to OTP mode if 2FA verification is required
+      if (data.requiresOtp) {
+        setSuccess(data.message || "A login verification code has been sent to your email.");
+        setMode("login_otp");
+        setLoginOtp("");
+        return;
+      }
+
       if (data.role !== "admin") {
         throw new Error("Unauthorized: Admin access required.");
       }
@@ -54,6 +66,31 @@ export default function AdminLogin() {
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);
+    }
+  };
+
+  const handleLoginOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoadingLoginOtp(true);
+    try {
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+      const res = await fetch(`${baseURL}/auth/login/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp: loginOtp }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message || "Invalid or expired OTP");
+
+      localStorage.setItem("admin_token", data.token);
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoadingLoginOtp(false);
     }
   };
 
@@ -192,6 +229,62 @@ export default function AdminLogin() {
                 className="w-full bg-[#6bfe9c] text-[#004a23] font-bold py-3 rounded-lg mt-4 hover:bg-[#6bfe9c]/90 transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm"
               >
                 Authenticate
+              </button>
+            </form>
+          </>
+        )}
+
+        {/* LOGIN OTP VERIFICATION MODE (2FA) */}
+        {mode === 'login_otp' && (
+          <>
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white mb-4 cursor-pointer"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Credentials
+            </button>
+
+            <h1 className="text-2xl font-bold text-[#6bfe9c] mb-2 text-center">Login Verification</h1>
+            <p className="text-[10px] uppercase text-zinc-500 font-bold tracking-widest text-center mb-6">Enter Login OTP Code</p>
+
+            {error && (
+              <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-lg text-xs text-center animate-in fade-in">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="mb-4 p-3 bg-green-500/10 border border-green-500/20 text-[#6bfe9c] rounded-lg text-xs text-center animate-in fade-in flex flex-col gap-1.5 items-center justify-center">
+                <span>{success}</span>
+                <span className="font-mono text-[11px] font-bold text-white tracking-wide bg-black/30 px-2 py-0.5 rounded border border-[#48474a]/30">{email}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLoginOtp} className="space-y-4">
+              <div>
+                <label className="text-[10px] uppercase text-zinc-400 font-bold mb-1.5 block tracking-wider">OTP Code</label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-3 flex items-center text-zinc-500">
+                    <Key className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full bg-[#1f1f22] border border-[#48474a] rounded-lg pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-[#6bfe9c] transition-colors tracking-widest text-center font-bold"
+                    value={loginOtp}
+                    onChange={(e) => setLoginOtp(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loadingLoginOtp}
+                className="w-full bg-[#6bfe9c] text-[#004a23] font-bold py-3 rounded-lg mt-4 hover:bg-[#6bfe9c]/90 transition-colors flex items-center justify-center gap-2 cursor-pointer text-sm disabled:opacity-50"
+              >
+                {loadingLoginOtp && <RefreshCw className="w-4 h-4 animate-spin" />}
+                Confirm Login
               </button>
             </form>
           </>

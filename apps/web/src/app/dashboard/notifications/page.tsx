@@ -339,8 +339,164 @@ export default function NotificationsPage() {
     };
   });
 
-  // Combine lists with offline pending alerts showing first
-  const allNotifications = [...offlineNotifications, ...dbNotifications];
+  const unreadNotifications = [
+    ...offlineNotifications,
+    ...dbNotifications.filter((n: any) => !n.isRead)
+  ];
+
+  const readNotifications = dbNotifications.filter((n: any) => n.isRead);
+
+  const renderNotificationCard = (notif: any) => {
+    const isTransaction = notif.type === "transaction" || notif.metadata?.smsText;
+
+    if (isTransaction) {
+      const smsText = notif.metadata?.smsText || notif.message;
+      const summary = notif.metadata?.summary || getShortSummary(smsText);
+      const isOffline = !!notif.metadata?.isOfflinePending;
+      const isLoadingSms = loadingNotifId === notif._id;
+
+      return (
+        <SwipeableNotificationCard
+          key={notif._id}
+          notif={notif}
+          onMarkRead={isOffline ? undefined : () => markReadMutation.mutate(notif._id)}
+          onDelete={() => {
+            if (isOffline) {
+              dismissOfflineSms(smsText);
+            } else {
+              deleteMutation.mutate(notif._id);
+            }
+          }}
+        >
+          <div 
+            className={`glass-card bg-card/95 p-4 relative overflow-hidden cursor-pointer ${
+              isOffline ? "ring-1 ring-primary/30" : ""
+            }`}
+            onClick={() => setExpandedNotifId(expandedNotifId === notif._id ? null : notif._id)}
+          >
+            <div className="flex gap-4 items-center">
+              {/* Glow effect */}
+              <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
+              
+              {/* Glowing left message icon */}
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+
+              {/* Text details */}
+              <div className="flex-1 min-w-0 pr-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5 flex items-center gap-1.5">
+                  <span>{isOffline ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}</span>
+                  {expandedNotifId === notif._id ? <ChevronUp className="w-3 h-3 text-primary/60" /> : <ChevronDown className="w-3 h-3 text-primary/60" />}
+                </p>
+                <h4 className="text-xs font-bold text-foreground leading-tight truncate">{summary}</h4>
+                <p className={`text-[9px] text-muted-foreground mt-0.5 ${expandedNotifId === notif._id ? "whitespace-pre-wrap leading-relaxed" : "truncate"}`}>{smsText}</p>
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                {isOffline ? (
+                  <button 
+                    onClick={() => handleDirectLog(smsText, notif._id, isOffline)}
+                    disabled={isLoadingSms}
+                    className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20 disabled:opacity-75"
+                    title="Log transaction directly"
+                  >
+                    {isLoadingSms ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                    )}
+                  </button>
+                ) : (
+                  notif.metadata?.transactionId && (
+                    <button
+                      onClick={() => router.push(`/dashboard/edit?id=${notif.metadata.transactionId}`)}
+                      className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center hover:bg-primary/30 active:scale-95 transition-all"
+                      title="View/Edit transaction"
+                    >
+                      <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                    </button>
+                  )
+                )}
+                
+                <button 
+                  onClick={() => {
+                    if (isOffline) {
+                      dismissOfflineSms(smsText);
+                    } else {
+                      deleteMutation.mutate(notif._id);
+                    }
+                  }}
+                  className="w-8 h-8 rounded-lg bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-95 transition-all"
+                  title="Dismiss alert"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            {expandedNotifId === notif._id && renderMessageJourney(notif)}
+          </div>
+        </SwipeableNotificationCard>
+      );
+    }
+
+    return (
+      <SwipeableNotificationCard
+        key={notif._id}
+        notif={notif}
+        onMarkRead={() => markReadMutation.mutate(notif._id)}
+        onDelete={() => deleteMutation.mutate(notif._id)}
+      >
+        <div 
+          className={`group flex items-start gap-4 p-4 transition-all cursor-pointer relative overflow-hidden ${
+            notif.isRead 
+              ? "bg-card/40 hover:bg-accent/40" 
+              : "bg-primary/[0.03] hover:bg-primary/[0.05]"
+          }`}
+          onClick={() => handleNotificationClick(notif)}
+        >
+          {!notif.isRead && (
+            <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
+          )}
+
+          {getNotifIcon(notif.type)}
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className={`text-sm font-bold text-foreground leading-snug truncate ${!notif.isRead ? 'text-primary font-black' : ''}`}>
+                {notif.title}
+              </h4>
+              <span className="text-[10px] text-muted-foreground/60 font-mono shrink-0">
+                {formatRelativeTime(notif.createdAt)}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
+              {notif.message}
+            </p>
+            {notif.actionUrl && (
+              <span className="text-[10px] text-primary/80 font-bold tracking-wide uppercase hover:underline inline-block mt-2">
+                View Activity &rarr;
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteMutation.mutate(notif._id);
+            }}
+            disabled={deleteMutation.isPending}
+            className="w-8 h-8 rounded-xl bg-accent/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all shrink-0 active:scale-90"
+            title="Delete notification"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </SwipeableNotificationCard>
+    );
+  };
 
   if (!isMounted || !user) return null;
 
@@ -374,7 +530,7 @@ export default function NotificationsPage() {
         <div className="py-20 text-center">
           <p className="text-destructive font-medium">Failed to retrieve notifications. Please try again.</p>
         </div>
-      ) : allNotifications.length === 0 ? (
+      ) : unreadNotifications.length === 0 && readNotifications.length === 0 ? (
         <div className="py-24 flex flex-col items-center justify-center text-center gap-4 animate-in fade-in zoom-in-95 duration-500">
           <div className="w-16 h-16 rounded-[2rem] bg-card border border-border flex items-center justify-center shadow-lg relative group">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-[2rem]" />
@@ -386,144 +542,128 @@ export default function NotificationsPage() {
           </div>
         </div>
       ) : (
-        <div className="space-y-4">
-          {allNotifications.map((notif) => {
-            const isTransaction = notif.type === "transaction" || notif.metadata?.smsText;
-
-            // Render custom popup-card layout for Transaction SMS items
-            if (isTransaction) {
-              const smsText = notif.metadata?.smsText || notif.message;
-              const summary = notif.metadata?.summary || getShortSummary(smsText);
-              const isOffline = !!notif.metadata?.isOfflinePending;
-              const isLoadingSms = loadingNotifId === notif._id;
-              
-                            return (
-                <div 
-                  key={notif._id}
-                  className={`glass-card bg-card/90 backdrop-blur-2xl border border-primary/20 shadow-lg rounded-2xl p-4 relative overflow-hidden animate-in fade-in duration-300 cursor-pointer ${
-                    isOffline ? "ring-1 ring-primary/30" : ""
-                  }`}
-                  onClick={() => setExpandedNotifId(expandedNotifId === notif._id ? null : notif._id)}
-                >
-                  <div className="flex gap-4 items-center">
-                    {/* Glow effect */}
-                    <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-                    
-                    {/* Glowing left message icon */}
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                      <MessageSquare className="w-5 h-5" />
-                    </div>
-
-                    {/* Text details */}
-                    <div className="flex-1 min-w-0 pr-2">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5 flex items-center gap-1.5">
-                        <span>{isOffline ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}</span>
-                        {expandedNotifId === notif._id ? <ChevronUp className="w-3 h-3 text-primary/60" /> : <ChevronDown className="w-3 h-3 text-primary/60" />}
-                      </p>
-                      <h4 className="text-xs font-bold text-foreground leading-tight truncate">{summary}</h4>
-                      <p className={`text-[9px] text-muted-foreground mt-0.5 ${expandedNotifId === notif._id ? "whitespace-pre-wrap leading-relaxed" : "truncate"}`}>{smsText}</p>
-                    </div>
-
-                    {/* Action buttons matching the overlay popup */}
-                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {isOffline ? (
-                        <button 
-                          onClick={() => handleDirectLog(smsText, notif._id, isOffline)}
-                          disabled={isLoadingSms}
-                          className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20 disabled:opacity-75"
-                          title="Log transaction directly"
-                        >
-                          {isLoadingSms ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-                          )}
-                        </button>
-                      ) : (
-                        notif.metadata?.transactionId && (
-                          <button
-                            onClick={() => router.push(`/dashboard/edit?id=${notif.metadata.transactionId}`)}
-                            className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center hover:bg-primary/30 active:scale-95 transition-all"
-                            title="View/Edit transaction"
-                          >
-                            <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-                          </button>
-                        )
-                      )}
-                      
-                      <button 
-                        onClick={() => {
-                          if (isOffline) {
-                            dismissOfflineSms(smsText);
-                          } else {
-                            deleteMutation.mutate(notif._id);
-                          }
-                        }}
-                        className="w-8 h-8 rounded-lg bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-95 transition-all"
-                        title="Dismiss alert"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {expandedNotifId === notif._id && renderMessageJourney(notif)}
-                </div>
-              );
-            }
-
-            // Render standard security/system alerts layout
-            return (
-              <div 
-                key={notif._id}
-                className={`group flex items-start gap-4 p-4 rounded-3xl border transition-all cursor-pointer relative overflow-hidden ${
-                  notif.isRead 
-                    ? "bg-card/40 border-border/50 hover:bg-accent/40" 
-                    : "bg-primary/[0.03] border-primary/15 hover:bg-primary/[0.05]"
-                }`}
-                onClick={() => handleNotificationClick(notif)}
-              >
-                {!notif.isRead && (
-                  <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-primary" />
-                )}
-
-                {getNotifIcon(notif.type)}
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <h4 className={`text-sm font-bold text-foreground leading-snug truncate ${!notif.isRead ? 'text-primary font-black' : ''}`}>
-                      {notif.title}
-                    </h4>
-                    <span className="text-[10px] text-muted-foreground/60 font-mono shrink-0">
-                      {formatRelativeTime(notif.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed mt-1 break-words">
-                    {notif.message}
-                  </p>
-                  {notif.actionUrl && (
-                    <span className="text-[10px] text-primary/80 font-bold tracking-wide uppercase hover:underline inline-block mt-2">
-                      View Activity &rarr;
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteMutation.mutate(notif._id);
-                  }}
-                  disabled={deleteMutation.isPending}
-                  className="w-8 h-8 rounded-xl bg-accent/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all shrink-0 active:scale-90"
-                  title="Delete notification"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+        <div className="space-y-8 animate-in fade-in duration-500">
+          {/* Unread Section */}
+          {unreadNotifications.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-[#6bfe9c] mb-2 px-1">New Alerts</h3>
+              <div className="space-y-3">
+                {unreadNotifications.map((notif) => renderNotificationCard(notif))}
               </div>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Read Section */}
+          {readNotifications.length > 0 && (
+            <div className="space-y-3 pt-4 border-t border-border/20">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-2 px-1">Read Alerts</h3>
+              <div className="space-y-3">
+                {readNotifications.map((notif) => renderNotificationCard(notif))}
+              </div>
+            </div>
+          )}
         </div>
       )}
+    </div>
+  );
+}
+
+function SwipeableNotificationCard({ 
+  notif, 
+  onMarkRead, 
+  onDelete, 
+  children 
+}: { 
+  notif: any; 
+  onMarkRead?: () => void; 
+  onDelete: () => void; 
+  children: React.ReactNode;
+}) {
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+
+  const maxDrag = notif.isRead ? -70 : -140;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX - dragX);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isDragging) return;
+    const currentX = e.touches[0].clientX;
+    const dx = currentX - startX;
+    
+    if (dx > 0) setDragX(0);
+    else if (dx < maxDrag) setDragX(maxDrag);
+    else setDragX(dx);
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    if (dragX < maxDrag / 2) {
+      setDragX(maxDrag);
+    } else {
+      setDragX(0); 
+    }
+  };
+
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (dragX === maxDrag) {
+      e.stopPropagation();
+      setDragX(0);
+    }
+  };
+
+  return (
+    <div className="relative rounded-3xl overflow-hidden bg-card border border-border">
+      {/* Swipe reveal actions overlay */}
+      <div className="absolute inset-y-0 right-0 flex items-center justify-end" style={{ zIndex: 0, width: notif.isRead ? '70px' : '140px' }}>
+        {!notif.isRead && (
+          <button 
+            onClick={(e) => { 
+              e.preventDefault(); 
+              e.stopPropagation(); 
+              if (onMarkRead) onMarkRead(); 
+              setDragX(0);
+            }} 
+            className="h-full flex-1 flex flex-col items-center justify-center bg-primary/20 hover:bg-primary/30 text-primary transition-all active:scale-95 cursor-pointer border-r border-border/10"
+            title="Mark as Read"
+          >
+             <CheckCheck className="w-4 h-4 mb-1" />
+             <span className="text-[9px] font-black uppercase tracking-wider">Read</span>
+          </button>
+        )}
+        <button 
+          onClick={(e) => { 
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            onDelete(); 
+            setDragX(0);
+          }} 
+          className="h-full flex-1 flex flex-col items-center justify-center bg-destructive/20 hover:bg-destructive/30 text-destructive transition-all active:scale-95 cursor-pointer"
+          title="Delete Notification"
+        >
+           <Trash2 className="w-4 h-4 mb-1" />
+           <span className="text-[9px] font-black uppercase tracking-wider">Delete</span>
+        </button>
+      </div>
+
+      {/* Actual Card content */}
+      <div 
+        onClick={handleCardClick}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        style={{ 
+          transform: `translateX(${dragX}px) scale(${1 - Math.min(Math.abs(dragX) / 140, 1) * 0.03})`, 
+          transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' 
+        }}
+        className="relative z-10 w-full bg-card"
+      >
+        {children}
+      </div>
     </div>
   );
 }

@@ -6,8 +6,8 @@ const getBaseURL = () => {
   }
   if (typeof window !== 'undefined') {
     // In Capacitor (Android/iOS APKs), origin is capacitor://localhost or http://localhost (no port)
-    const isCapacitor = window.location.origin.startsWith('capacitor://') || 
-                        (window.location.hostname === 'localhost' && !window.location.port);
+    const isCapacitor = window.location.origin.startsWith('capacitor://') ||
+      (window.location.hostname === 'localhost' && !window.location.port);
     if (isCapacitor) {
       return 'https://lumina-expense-tracker-85ym.vercel.app/api';
     }

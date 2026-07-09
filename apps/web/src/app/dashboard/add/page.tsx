@@ -11,11 +11,13 @@ import VoiceWaveform from "@/components/VoiceWaveform";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
+import { useAuthStore } from "@/stores/useAuthStore";
 
 function AddTransactionForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
+  const user = useAuthStore((s) => s.user);
 
   // Selected State
   const initialType = (searchParams.get('type') as "expense" | "income") || "expense";
@@ -434,7 +436,11 @@ function AddTransactionForm() {
           <label className="block font-medium text-xs text-muted-foreground mb-3 uppercase text-center">
             Amount
           </label>
-          <AmountInput value={amount} onChange={setAmount} autoFocus={true} />
+          <AmountInput 
+            value={amount} 
+            onChange={setAmount} 
+            autoFocus={user?.settings?.autoOpenKeyboard ?? true} 
+          />
           
           <button
             type="button"

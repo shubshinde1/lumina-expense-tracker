@@ -5,6 +5,7 @@ import { Otp } from "../models/Otp";
 import { generateToken } from "../utils/generateToken";
 import { sendOtpEmail } from "../utils/mailer";
 import { Notification } from "../models/Notification";
+import { AuthRequest } from "../middleware/auth.middleware";
 
 // Random 6 digit generator helper
 const generateOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -60,6 +61,7 @@ export const registerUser = async (req: Request, res: Response) => {
         email: user.email,
         plan: user.plan,
         role: user.role,
+        settings: (user as any).settings || { autoOpenKeyboard: true },
         token: generateToken(user._id.toString()),
       });
     } else {
@@ -139,11 +141,44 @@ export const authUser = async (req: Request, res: Response) => {
         email: user.email,
         plan: user.plan,
         role: user.role,
+        settings: (user as any).settings || { autoOpenKeyboard: true },
         token: generateToken(user._id.toString()),
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });
     }
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const updateUserSettings = async (req: AuthRequest, res: Response) => {
+  const { autoOpenKeyboard } = req.body;
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!(user as any).settings) {
+      (user as any).settings = { autoOpenKeyboard: true };
+    }
+
+    if (autoOpenKeyboard !== undefined) {
+      (user as any).settings.autoOpenKeyboard = autoOpenKeyboard;
+    }
+
+    user.markModified("settings");
+    await user.save();
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      plan: user.plan,
+      role: user.role,
+      settings: (user as any).settings,
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

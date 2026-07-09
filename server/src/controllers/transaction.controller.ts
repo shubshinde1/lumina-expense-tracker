@@ -65,10 +65,80 @@ export const addTransaction = async (req: AuthRequest, res: Response) => {
 };
 export const getTransactions = async (req: AuthRequest, res: Response) => {
   try {
-    const transactions = await Transaction.find({ user: req.user._id })
-      .sort({ date: -1 })
-      .populate("category", "name icon color subcategories");
-    res.json(transactions);
+    const { page, limit, type, startDate, endDate, search } = req.query;
+
+    const query: any = { user: req.user._id };
+
+    if (type && type !== 'all') {
+      query.type = type;
+    }
+
+    if (startDate || endDate) {
+      query.date = {};
+      if (startDate) {
+        query.date.$gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999);
+        query.date.$lte = end;
+      }
+    }
+
+    if (search && typeof search === 'string' && search.trim() !== '') {
+      const searchRegex = new RegExp(search.trim(), 'i');
+      query.$or = [
+        { description: searchRegex },
+        { paymentMode: searchRegex },
+        { "location.address": searchRegex }
+      ];
+    }
+
+    if (page) {
+      const pageNum = parseInt(page as string) || 1;
+      const limitNum = parseInt(limit as string) || 20;
+      const skipNum = (pageNum - 1) * limitNum;
+
+      const transactions = await Transaction.find(query)
+        .sort({ date: -1 })
+        .skip(skipNum)
+        .limit(limitNum)
+        .populate("category", "name icon color subcategories");
+
+      const total = await Transaction.countDocuments(query);
+
+      // Aggregate sum for active query balance
+      const sumResult = await Transaction.aggregate([
+        { $match: query },
+        {
+          $group: {
+            _id: null,
+            totalIncome: {
+              $sum: { $cond: [{ $eq: ["$type", "income"] }, "$amount", 0] }
+            },
+            totalExpense: {
+              $sum: { $cond: [{ $eq: ["$type", "expense"] }, "$amount", 0] }
+            }
+          }
+        }
+      ]);
+      const totalBalance = sumResult.length > 0 
+        ? sumResult[0].totalIncome - sumResult[0].totalExpense 
+        : 0;
+
+      res.json({
+        transactions,
+        total,
+        totalBalance,
+        page: pageNum,
+        pages: Math.ceil(total / limitNum)
+      });
+    } else {
+      const transactions = await Transaction.find(query)
+        .sort({ date: -1 })
+        .populate("category", "name icon color subcategories");
+      res.json(transactions);
+    }
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

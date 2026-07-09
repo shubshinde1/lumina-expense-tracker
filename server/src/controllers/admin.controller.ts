@@ -426,7 +426,13 @@ export const sendBroadcast = async (req: AuthRequest, res: Response) => {
     if (target === 'premium') {
       filter.plan = 'premium';
     } else if (target !== 'all' && target) {
-      filter._id = target;
+      if (Array.isArray(target)) {
+        filter._id = { $in: target };
+      } else if (typeof target === 'string' && target.includes(',')) {
+        filter._id = { $in: target.split(',') };
+      } else {
+        filter._id = target;
+      }
     }
 
     const users = await User.find(filter).select("email");

@@ -5,13 +5,217 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend 
 } from "recharts";
-import { ArrowLeft, User, Calendar, Receipt, TrendingUp, LayoutGrid, ShieldAlert, ShieldCheck, Key, MapPin } from "lucide-react";
+import { 
+  ArrowLeft, User, Calendar, Receipt, TrendingUp, LayoutGrid, 
+  ShieldAlert, ShieldCheck, Key, MapPin, XCircle, RefreshCw, 
+  Download, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown 
+} from "lucide-react";
 import Link from "next/link";
 
 export default function UserDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = use(paramsPromise);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Paginated and filtered user transaction history state
+  const [history, setHistory] = useState<any[]>([]);
+  const [totalHistory, setTotalHistory] = useState(0);
+  const [historyPages, setHistoryPages] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyLimit, setHistoryLimit] = useState(10);
+  const [historyType, setHistoryType] = useState("all");
+  const [historyStartDate, setHistoryStartDate] = useState("");
+  const [historyEndDate, setHistoryEndDate] = useState("");
+  const [historySortBy, setHistorySortBy] = useState("date");
+  const [historySortOrder, setHistorySortOrder] = useState("desc");
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [exportingHistory, setExportingHistory] = useState(false);
+
+  const fetchHistory = async () => {
+    try {
+      setLoadingHistory(true);
+      const queryParams = new URLSearchParams({
+        userId: params.id,
+        page: historyPage.toString(),
+        limit: historyLimit.toString(),
+        type: historyType,
+        sortBy: historySortBy,
+        sortOrder: historySortOrder,
+        ...(historyStartDate && { startDate: historyStartDate }),
+        ...(historyEndDate && { endDate: historyEndDate }),
+      });
+      const res = await apiFetch(`/admin/transactions?${queryParams.toString()}`);
+      setHistory(res.transactions || []);
+      setTotalHistory(res.total || 0);
+      setHistoryPages(res.pages || 1);
+    } catch (err) {
+      console.error("Failed to fetch history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, [params.id, historyPage, historyLimit, historyType, historyStartDate, historyEndDate, historySortBy, historySortOrder]);
+
+  const handleFilterChange = (updater: () => void) => {
+    updater();
+    setHistoryPage(1);
+  };
+
+  const handleSort = (field: string) => {
+    if (historySortBy === field) {
+      setHistorySortOrder(historySortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setHistorySortBy(field);
+      setHistorySortOrder("desc");
+    }
+    setHistoryPage(1);
+  };
+
+  const clearFilters = () => {
+    setHistoryStartDate("");
+    setHistoryEndDate("");
+    setHistoryType("all");
+    setHistorySortBy("date");
+    setHistorySortOrder("desc");
+    setHistoryPage(1);
+  };
+
+  const hasActiveFilters = historyStartDate || historyEndDate || historyType !== "all" || historySortBy !== "date" || historySortOrder !== "desc";
+
+  const getPaginationRange = () => {
+    const range: (number | string)[] = [];
+    const delta = 1;
+
+    for (let i = 1; i <= historyPages; i++) {
+      if (
+        i === 1 ||
+        i === historyPages ||
+        (i >= historyPage - delta && i <= historyPage + delta)
+      ) {
+        range.push(i);
+      } else if (range[range.length - 1] !== "...") {
+        range.push("...");
+      }
+    }
+    return range;
+  };
+
+  const handleExport = async (format: 'csv' | 'excel') => {
+    try {
+      setExportingHistory(true);
+      const queryParams = new URLSearchParams({
+        userId: params.id,
+        page: "1",
+        limit: totalHistory.toString(),
+        type: historyType,
+        sortBy: historySortBy,
+        sortOrder: historySortOrder,
+        ...(historyStartDate && { startDate: historyStartDate }),
+        ...(historyEndDate && { endDate: historyEndDate }),
+      });
+
+      const res = await apiFetch(`/admin/transactions?${queryParams.toString()}`);
+      const list = res.transactions || [];
+
+      if (format === 'csv') {
+        exportToCSV(list);
+      } else {
+        exportToExcel(list);
+      }
+    } catch (error) {
+      console.error("Export failed", error);
+      alert("Export failed: " + error);
+    } finally {
+      setExportingHistory(false);
+    }
+  };
+
+  const exportToCSV = (list: any[]) => {
+    const headers = ["Category", "Type", "Description", "Date", "Amount", "Location"];
+    const rows = list.map(t => [
+      t.category?.name || "Other",
+      t.type,
+      t.description || "",
+      new Date(t.date).toLocaleDateString(),
+      t.amount,
+      t.location?.address || ""
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `personal_history_${params.id}_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const escapeXml = (unsafe: string) => {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case '\'': return '&apos;';
+        case '"': return '&quot;';
+        default: return c;
+      }
+    });
+  };
+
+  const exportToExcel = (list: any[]) => {
+    const rowsXML = list.map(t => `
+      <Row>
+        <Cell><Data ss:Type="String">${escapeXml(t.category?.name || "Other")}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.type)}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.description || "")}</Data></Cell>
+        <Cell><Data ss:Type="String">${new Date(t.date).toLocaleDateString()}</Data></Cell>
+        <Cell><Data ss:Type="Number">${t.amount}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.location?.address || "")}</Data></Cell>
+      </Row>
+    `).join("");
+
+    const xmlTemplate = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+          xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+          xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Worksheet ss:Name="Personal History">
+    <Table>
+      <Row>
+        <Cell><Data ss:Type="String">Category</Data></Cell>
+        <Cell><Data ss:Type="String">Type</Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Date</Data></Cell>
+        <Cell><Data ss:Type="String">Amount</Data></Cell>
+        <Cell><Data ss:Type="String">Location</Data></Cell>
+      </Row>
+      ${rowsXML}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xmlTemplate], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `personal_history_${params.id}_${new Date().toISOString().slice(0,10)}.xls`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const fetchUserData = () => {
     setLoading(true);
@@ -270,25 +474,156 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
 
       {/* Transaction History */}
       <div className="bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-lg overflow-hidden mt-5">
-        <div className="p-4 border-b border-[#48474a]/50 flex justify-between items-center">
+        <div className="p-4 border-b border-[#48474a]/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
                 Personal History <Receipt className="w-4 h-4 text-zinc-500" />
             </h3>
-            <span className="text-[10px] text-zinc-500 font-bold">{data.history.length || 0} Transactions Found</span>
+            
+            <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+              {hasActiveFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 rounded-lg text-[11px] font-bold text-red-400 hover:bg-red-500/25 transition-all cursor-pointer animate-in fade-in"
+                >
+                  <XCircle className="w-3 h-3" /> Clear Filters
+                </button>
+              )}
+
+              {/* Export Dropdown */}
+              <div className="relative group">
+                <button
+                  disabled={exportingHistory || totalHistory === 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 border border-[#48474a]/50 rounded-lg text-[11px] font-bold text-zinc-300 hover:text-white hover:bg-zinc-700 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  {exportingHistory ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 animate-spin text-[#6bfe9c]" /> Exporting...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3 h-3 text-[#6bfe9c]" /> Export Data
+                    </>
+                  )}
+                </button>
+                <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block hover:block z-50 min-w-[120px]">
+                  <div className="bg-[#131315] border border-[#48474a] rounded-lg shadow-xl overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => handleExport('csv')}
+                      className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    >
+                      CSV format
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleExport('excel')}
+                      className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] transition-colors flex items-center gap-1.5 border-t border-[#48474a]/20 cursor-pointer"
+                    >
+                      Excel (.xls)
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Type toggle */}
+              <div className="flex items-center gap-1.5 bg-[#1f1f22] p-1 rounded-lg border border-[#48474a]">
+                <button 
+                  onClick={() => handleFilterChange(() => setHistoryType("all"))}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${historyType === 'all' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-400 hover:text-white'}`}
+                >
+                  All
+                </button>
+                <button 
+                  onClick={() => handleFilterChange(() => setHistoryType("income"))}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${historyType === 'income' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-400 hover:text-white'}`}
+                >
+                  Income
+                </button>
+                <button 
+                  onClick={() => handleFilterChange(() => setHistoryType("expense"))}
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-bold transition-all cursor-pointer ${historyType === 'expense' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-400 hover:text-white'}`}
+                >
+                  Expense
+                </button>
+              </div>
+
+              <span className="text-[10px] text-zinc-500 font-bold bg-[#131315] border border-[#48474a] px-2.5 py-1.5 rounded-lg">{totalHistory} Transactions Found</span>
+            </div>
         </div>
+
+        {/* Date Filters Block */}
+        <div className="p-4 bg-[#252528]/20 border-b border-[#48474a]/30 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="text-[9px] uppercase text-zinc-400 font-bold mb-1 block tracking-wider">From Date</label>
+            <input
+              type="date"
+              value={historyStartDate}
+              onChange={(e) => handleFilterChange(() => setHistoryStartDate(e.target.value))}
+              className="w-full bg-[#131315] border border-[#48474a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
+            />
+          </div>
+          <div>
+            <label className="text-[9px] uppercase text-zinc-400 font-bold mb-1 block tracking-wider">To Date</label>
+            <input
+              type="date"
+              value={historyEndDate}
+              onChange={(e) => handleFilterChange(() => setHistoryEndDate(e.target.value))}
+              className="w-full bg-[#131315] border border-[#48474a] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#6bfe9c] transition-colors"
+            />
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full text-left min-w-[650px]">
-              <thead className="bg-[#2c2c2f]/50 text-[9px] uppercase text-zinc-400 tracking-wider">
+              <thead className="bg-[#2c2c2f]/50 text-[9px] uppercase text-zinc-400 tracking-wider select-none">
                 <tr>
-                  <th className="px-4 py-2 font-bold">Category</th>
-                  <th className="px-4 py-2 font-bold">Description</th>
-                  <th className="px-4 py-2 font-bold">Date</th>
-                  <th className="px-4 py-2 font-bold text-center">Location</th>
-                  <th className="px-4 py-2 font-bold text-right">Amount</th>
+                  <th className="px-4 py-2.5 font-bold">Category</th>
+                  <th className="px-4 py-2.5 font-bold">Description</th>
+                  <th 
+                    className="px-4 py-2.5 font-bold cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort("date")}
+                  >
+                    <div className="flex items-center gap-1">
+                      Date
+                      {historySortBy === "date" ? (
+                        historySortOrder === "asc" ? <ArrowUp className="w-3 h-3 text-[#6bfe9c]" /> : <ArrowDown className="w-3 h-3 text-[#6bfe9c]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="px-4 py-2.5 font-bold text-center">Location</th>
+                  <th 
+                    className="px-4 py-2.5 font-bold text-right cursor-pointer hover:text-white transition-colors"
+                    onClick={() => handleSort("amount")}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      Amount
+                      {historySortBy === "amount" ? (
+                        historySortOrder === "asc" ? <ArrowUp className="w-3 h-3 text-[#6bfe9c]" /> : <ArrowDown className="w-3 h-3 text-[#6bfe9c]" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                      )}
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#48474a]/30">
-                  {data.history.map((t: any) => (
+                  {loadingHistory ? (
+                    <tr>
+                      <td colSpan={5} className="py-20 text-center text-zinc-500 animate-pulse text-xs">
+                        <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#6bfe9c]" />
+                        Loading transactions...
+                      </td>
+                    </tr>
+                  ) : history.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-20 text-zinc-600 italic text-xs">
+                        No transaction history found matching the selected filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    history.map((t: any) => (
                       <tr key={t._id} className="hover:bg-[#252528]/50 transition-colors">
                            <td className="px-4 py-1.5">
                               <div className="flex items-center gap-2.5">
@@ -327,14 +662,63 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                               </span>
                           </td>
                       </tr>
-                  ))}
+                    ))
+                  )}
               </tbody>
           </table>
         </div>
-        {(!data.history || data.history.length === 0) && (
-            <div className="text-center py-20 text-zinc-600 italic text-sm">
-                No transaction history for this user.
+
+        {/* Pagination controls */}
+        {!loadingHistory && historyPages > 1 && (
+          <div className="p-4 border-t border-[#48474a]/30 flex flex-col sm:flex-row justify-between items-center gap-4 bg-[#1f1f22]/20">
+            <div className="text-[10px] text-zinc-500 font-medium">
+              Showing page <span className="text-zinc-300 font-bold">{historyPage}</span> of <span className="text-zinc-300 font-bold">{historyPages}</span> ({totalHistory} total transactions)
             </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                disabled={historyPage === 1}
+                onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                className="p-1.5 bg-zinc-800 border border-[#48474a]/50 rounded-lg text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                title="Previous Page"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              {getPaginationRange().map((p, idx) => {
+                if (p === "...") {
+                  return (
+                    <span key={`dots-${idx}`} className="px-2 py-1 text-xs text-zinc-600 select-none">
+                      ...
+                    </span>
+                  );
+                }
+                const isCurrent = historyPage === p;
+                return (
+                  <button
+                    key={`page-${p}`}
+                    onClick={() => setHistoryPage(Number(p))}
+                    className={`min-w-[28px] h-7 flex items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      isCurrent 
+                        ? "bg-[#6bfe9c] text-[#004a23] shadow-md shadow-[#6bfe9c]/10" 
+                        : "bg-zinc-800/40 text-zinc-400 border border-[#48474a]/40 hover:text-white hover:bg-zinc-800"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                );
+              })}
+
+              <button
+                disabled={historyPage === historyPages}
+                onClick={() => setHistoryPage(p => Math.min(historyPages, p + 1))}
+                className="p-1.5 bg-zinc-800 border border-[#48474a]/50 rounded-lg text-zinc-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                title="Next Page"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>

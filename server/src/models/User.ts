@@ -9,6 +9,9 @@ const userSchema = new mongoose.Schema(
     plan: { type: String, enum: ["free", "premium"], default: "free" },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     isSuspended: { type: Boolean, default: false },
+    settings: {
+      autoOpenKeyboard: { type: Boolean, default: true }
+    }
   },
   { timestamps: true }
 );

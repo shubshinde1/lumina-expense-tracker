@@ -14,7 +14,7 @@ export default function BroadcastPage() {
   const [preview, setPreview] = useState(false);
 
   const [users, setUsers] = useState<any[]>([]);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUsers, setSelectedUsers] = useState<any[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -46,15 +46,15 @@ export default function BroadcastPage() {
     e.preventDefault();
     if (!formData.subject || !formData.message) return alert("Please fill in all fields.");
 
-    if ((formData.target === "specific" || (formData.target !== "all" && formData.target !== "premium")) && !selectedUser) {
-      return alert("Please search and select a specific user account.");
+    if (formData.target === "specific" && selectedUsers.length === 0) {
+      return alert("Please search and select at least one user account.");
     }
 
     const targetText = formData.target === "all"
       ? "ALL active users"
       : formData.target === "premium"
       ? "all PREMIUM users"
-      : `user ${selectedUser?.name} (${selectedUser?.email})`;
+      : `${selectedUsers.length} specific user(s)`;
 
     const confirmSend = confirm(`Are you sure you want to send this broadcast via ${formData.channels === 'both' ? 'both Email & In-App' : formData.channels === 'email' ? 'Email' : 'In-App Notification'} to ${targetText}?`);
     if (!confirmSend) return;
@@ -63,11 +63,14 @@ export default function BroadcastPage() {
     try {
       const res = await apiFetch("/admin/broadcast", {
         method: "POST",
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          target: formData.target === "specific" ? selectedUsers.map(u => u._id) : formData.target
+        }),
       });
       alert(res.message || "Broadcast sent successfully!");
       setFormData({ subject: "", message: "", target: "all", channels: "both" });
-      setSelectedUser(null);
+      setSelectedUsers([]);
       setUserSearch("");
     } catch (err: any) {
       alert("Failed to send broadcast: " + err.message);
@@ -97,7 +100,7 @@ export default function BroadcastPage() {
                     type="button"
                     onClick={() => {
                       setFormData({ ...formData, target: "all" });
-                      setSelectedUser(null);
+                      setSelectedUsers([]);
                       setUserSearch("");
                     }}
                     className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border transition-all cursor-pointer text-xs font-semibold ${
@@ -112,7 +115,7 @@ export default function BroadcastPage() {
                     type="button"
                     onClick={() => {
                       setFormData({ ...formData, target: "premium" });
-                      setSelectedUser(null);
+                      setSelectedUsers([]);
                       setUserSearch("");
                     }}
                     className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border transition-all cursor-pointer text-xs font-semibold ${
@@ -127,11 +130,11 @@ export default function BroadcastPage() {
                     type="button"
                     onClick={() => {
                       setFormData({ ...formData, target: "specific" });
-                      setSelectedUser(null);
+                      setSelectedUsers([]);
                       setUserSearch("");
                     }}
                     className={`flex items-center justify-center gap-1.5 py-2.5 rounded-lg border transition-all cursor-pointer text-xs font-semibold ${
-                      formData.target === "specific" || (formData.target !== "all" && formData.target !== "premium")
+                      formData.target === "specific"
                         ? "bg-blue-500/10 border-blue-500 text-blue-400"
                         : "bg-[#131315] border-[#48474a] text-zinc-500 hover:border-zinc-500"
                     }`}
@@ -142,9 +145,9 @@ export default function BroadcastPage() {
               </div>
 
               {/* User search input (only shown if "Specific" target is selected) */}
-              {(formData.target === "specific" || (formData.target !== "all" && formData.target !== "premium")) && (
+              {formData.target === "specific" && (
                 <div className="relative z-20" ref={dropdownRef}>
-                  <label className="text-[10px] font-bold uppercase text-zinc-500 mb-1.5 block">Search User Account</label>
+                  <label className="text-[10px] font-bold uppercase text-zinc-500 mb-1.5 block">Search User Accounts</label>
                   <div className="relative group">
                     <input
                       type="text"
@@ -158,14 +161,11 @@ export default function BroadcastPage() {
                       onFocus={() => setIsDropdownOpen(true)}
                       className="w-full bg-[#131315] border border-[#48474a] rounded-lg pl-3 pr-9 py-2 text-xs text-white focus:outline-none focus:border-[#6bfe9c] transition-colors placeholder:text-zinc-600"
                     />
-                    {selectedUser ? (
+                    {userSearch ? (
                       <button
                         type="button"
                         onClick={() => {
                           setUserSearch("");
-                          setSelectedUser(null);
-                          setFormData({ ...formData, target: "specific" });
-                          setIsDropdownOpen(false);
                         }}
                         className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-zinc-500 hover:text-white transition-colors cursor-pointer"
                       >
@@ -174,12 +174,35 @@ export default function BroadcastPage() {
                     ) : null}
                   </div>
 
+                  {/* Selected user badges */}
+                  {selectedUsers.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2 mb-1">
+                      {selectedUsers.map(u => (
+                        <div 
+                          key={u._id} 
+                          className="flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/20 px-2.5 py-1.5 rounded-lg text-[10px] text-blue-300 font-semibold animate-in zoom-in-95 duration-150"
+                        >
+                          <span>{u.name} ({u.email})</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedUsers(prev => prev.filter(user => user._id !== u._id))}
+                            className="text-blue-500 hover:text-blue-300 transition-colors p-0.5 cursor-pointer"
+                            title="Remove recipient"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   {isDropdownOpen && (
                     <div className="absolute left-0 right-0 mt-1 z-30 bg-[#131315] border border-[#48474a] rounded-lg shadow-xl max-h-[160px] overflow-y-auto custom-scrollbar">
                       {users
                         .filter(u => 
-                          u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
-                          u.email.toLowerCase().includes(userSearch.toLowerCase())
+                          (u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+                           u.email.toLowerCase().includes(userSearch.toLowerCase())) &&
+                          !selectedUsers.some(selected => selected._id === u._id)
                         )
                         .slice(0, 10)
                         .map(u => (
@@ -187,9 +210,8 @@ export default function BroadcastPage() {
                             key={u._id}
                             type="button"
                             onClick={() => {
-                              setSelectedUser(u);
-                              setUserSearch(`${u.name} (${u.email})`);
-                              setFormData({ ...formData, target: u._id });
+                              setSelectedUsers(prev => [...prev, u]);
+                              setUserSearch("");
                               setIsDropdownOpen(false);
                             }}
                             className="w-full text-left px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex flex-col cursor-pointer border-b border-[#48474a]/20 last:border-b-0"
@@ -199,8 +221,9 @@ export default function BroadcastPage() {
                           </button>
                         ))}
                       {users.filter(u => 
-                        u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
-                        u.email.toLowerCase().includes(userSearch.toLowerCase())
+                        (u.name.toLowerCase().includes(userSearch.toLowerCase()) || 
+                         u.email.toLowerCase().includes(userSearch.toLowerCase())) &&
+                        !selectedUsers.some(selected => selected._id === u._id)
                       ).length === 0 && (
                         <div className="px-3 py-3 text-xs text-zinc-600 italic">No matching users found</div>
                       )}

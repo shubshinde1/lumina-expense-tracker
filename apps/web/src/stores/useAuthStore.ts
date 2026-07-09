@@ -6,6 +6,9 @@ interface User {
   email: string;
   plan: string;
   role: string;
+  settings?: {
+    autoOpenKeyboard: boolean;
+  };
   token: string;
 }
 

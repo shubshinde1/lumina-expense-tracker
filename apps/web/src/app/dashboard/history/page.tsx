@@ -1,9 +1,9 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw, Search, X } from "lucide-react";
+import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw, Search, X, Download } from "lucide-react";
 import api from "@/lib/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useThemeStore } from "@/stores/useThemeStore";
@@ -47,23 +47,289 @@ export default function HistoryPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: transactions, isLoading } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: async () => {
-      const response = await api.get('/transactions');
-      return response.data;
+  // Infinite Scroll & Pagination States
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalBalance, setTotalBalance] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  // Search input debouncer
+  const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const fetchTransactions = async (pageNum: number, isReset: boolean) => {
+    try {
+      if (isReset) {
+        setIsLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const params: any = {
+        page: pageNum.toString(),
+        limit: "15",
+      };
+
+      if (filter !== "all") {
+        params.type = filter;
+      }
+
+      if (debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+
+      const now = new Date();
+      if (timeFilter === 'week') {
+        const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        params.startDate = weekAgo.toISOString();
+      } else if (timeFilter === 'month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        params.startDate = startOfMonth.toISOString();
+      } else if (timeFilter === 'quarter') {
+        const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        params.startDate = quarterAgo.toISOString();
+      } else if (timeFilter === 'custom') {
+        if (customStart) params.startDate = new Date(customStart).toISOString();
+        if (customEnd) params.endDate = new Date(customEnd).toISOString();
+      } else if (timeFilter === 'exact_date') {
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        params.startDate = startOfDay.toISOString();
+        params.endDate = endOfDay.toISOString();
+      }
+
+      const queryString = new URLSearchParams(params).toString();
+      const res = await api.get(`/transactions?${queryString}`);
+
+      const newTxs = res.data.transactions || [];
+      const pages = res.data.pages || 1;
+      const total = res.data.total || 0;
+      const balance = res.data.totalBalance || 0;
+
+      if (isReset) {
+        setTransactions(newTxs);
+        setPage(1);
+      } else {
+        setTransactions(prev => [...prev, ...newTxs]);
+      }
+
+      setTotalPages(pages);
+      setTotalCount(total);
+      setTotalBalance(balance);
+      setHasMore(pageNum < pages);
+    } catch (err) {
+      console.error("Failed to load transactions", err);
+    } finally {
+      setIsLoading(false);
+      setLoadingMore(false);
     }
-  });
+  };
+
+  // Reset page and list on filter changes
+  useEffect(() => {
+    fetchTransactions(1, true);
+  }, [filter, timeFilter, selectedDate, customStart, customEnd, debouncedSearch]);
+
+  // Load next pages on page increment
+  useEffect(() => {
+    if (page > 1) {
+      fetchTransactions(page, false);
+    }
+  }, [page]);
+
+  // Infinite Scroll Trigger
+  useEffect(() => {
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement | Document;
+      if (!target) return;
+
+      let scrollTop = 0;
+      let scrollHeight = 0;
+      let clientHeight = 0;
+
+      if (target instanceof Document) {
+        scrollTop = window.scrollY || document.documentElement.scrollTop;
+        scrollHeight = document.documentElement.scrollHeight;
+        clientHeight = window.innerHeight;
+      } else {
+        scrollTop = target.scrollTop;
+        scrollHeight = target.scrollHeight;
+        clientHeight = target.clientHeight;
+      }
+
+      if (
+        scrollHeight - scrollTop - clientHeight <= 120 &&
+        !loadingMore &&
+        hasMore &&
+        !isLoading
+      ) {
+        setPage(p => p + 1);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { capture: true });
+    return () => window.removeEventListener("scroll", handleScroll, { capture: true });
+  }, [loadingMore, hasMore, isLoading]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/transactions/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      fetchTransactions(1, true);
       queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
     }
   });
+
+  const handleExport = async (format: 'csv' | 'excel') => {
+    try {
+      setExporting(true);
+      const params: any = {};
+      if (filter !== "all") params.type = filter;
+      if (debouncedSearch.trim()) params.search = debouncedSearch.trim();
+
+      const now = new Date();
+      if (timeFilter === 'week') {
+        const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+        params.startDate = weekAgo.toISOString();
+      } else if (timeFilter === 'month') {
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        params.startDate = startOfMonth.toISOString();
+      } else if (timeFilter === 'quarter') {
+        const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        params.startDate = quarterAgo.toISOString();
+      } else if (timeFilter === 'custom') {
+        if (customStart) params.startDate = new Date(customStart).toISOString();
+        if (customEnd) params.endDate = new Date(customEnd).toISOString();
+      } else if (timeFilter === 'exact_date') {
+        const startOfDay = new Date(selectedDate);
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date(selectedDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        params.startDate = startOfDay.toISOString();
+        params.endDate = endOfDay.toISOString();
+      }
+
+      const queryString = new URLSearchParams(params).toString();
+      const res = await api.get(`/transactions?${queryString}`);
+      const list = Array.isArray(res.data) ? res.data : (res.data.transactions || []);
+
+      if (format === 'csv') {
+        exportToCSV(list);
+      } else {
+        exportToExcel(list);
+      }
+    } catch (error) {
+      console.error("Export failed", error);
+      alert("Export failed: " + error);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const exportToCSV = (list: any[]) => {
+    const headers = ["Category", "Type", "Description", "Date", "Amount", "Payment Mode", "Location"];
+    const rows = list.map(t => [
+      t.category?.name || "Other",
+      t.type,
+      t.description || "",
+      new Date(t.date).toLocaleDateString(),
+      t.amount,
+      t.paymentMode || "UPI",
+      t.location?.address || ""
+    ]);
+
+    const csvContent = [headers, ...rows]
+      .map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `wealthy_history_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const escapeXml = (unsafe: string) => {
+    return unsafe.replace(/[<>&'"]/g, (c) => {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case '\'': return '&apos;';
+        case '"': return '&quot;';
+        default: return c;
+      }
+    });
+  };
+
+  const exportToExcel = (list: any[]) => {
+    const rowsXML = list.map(t => `
+      <Row>
+        <Cell><Data ss:Type="String">${escapeXml(t.category?.name || "Other")}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.type)}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.description || "")}</Data></Cell>
+        <Cell><Data ss:Type="String">${new Date(t.date).toLocaleDateString()}</Data></Cell>
+        <Cell><Data ss:Type="Number">${t.amount}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.paymentMode || "UPI")}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.location?.address || "")}</Data></Cell>
+      </Row>
+    `).join("");
+
+    const xmlTemplate = `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+          xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:x="urn:schemas-microsoft-com:office:excel"
+          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+          xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Worksheet ss:Name="Transactions">
+    <Table>
+      <Row>
+        <Cell><Data ss:Type="String">Category</Data></Cell>
+        <Cell><Data ss:Type="String">Type</Data></Cell>
+        <Cell><Data ss:Type="String">Description</Data></Cell>
+        <Cell><Data ss:Type="String">Date</Data></Cell>
+        <Cell><Data ss:Type="String">Amount</Data></Cell>
+        <Cell><Data ss:Type="String">Payment Mode</Data></Cell>
+        <Cell><Data ss:Type="String">Location</Data></Cell>
+      </Row>
+      ${rowsXML}
+    </Table>
+  </Worksheet>
+</Workbook>`;
+
+    const blob = new Blob([xmlTemplate], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `wealthy_history_${new Date().toISOString().slice(0,10)}.xls`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleFilterChange = (updater: () => void) => {
+    updater();
+    setPage(1);
+  };
 
   if (isLoading) {
     return (
@@ -74,60 +340,7 @@ export default function HistoryPage() {
     );
   }
 
-  // Time Filtering Logic
-  const filterByTime = (tx: any) => {
-    if (timeFilter === 'all') return true;
-    
-    const txDate = new Date(tx.date);
-    const now = new Date();
-    
-    if (timeFilter === 'week') {
-      const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-      return txDate >= weekAgo;
-    }
-    if (timeFilter === 'month') {
-       return txDate.getMonth() === now.getMonth() && txDate.getFullYear() === now.getFullYear();
-    }
-    if (timeFilter === 'quarter') {
-      const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-      return txDate >= quarterAgo;
-    }
-    if (timeFilter === 'custom') {
-      if (!customStart || !customEnd) return true;
-      return txDate >= new Date(customStart) && txDate <= new Date(customEnd);
-    }
-    if (timeFilter === 'exact_date') {
-      return isSameDayIST(txDate, selectedDate);
-    }
-    return true;
-  }
-
-  const filteredData = (transactions || [])
-    .filter((tx: any) => filter === 'all' || tx.type === filter)
-    .filter(filterByTime)
-    .filter((tx: any) => {
-      if (!searchQuery.trim()) return true;
-      const query = searchQuery.toLowerCase();
-      const desc = (tx.description || '').toLowerCase();
-      const cat = (tx.category?.name || '').toLowerCase();
-      
-      const subCategoryName = tx.subcategory && tx.category?.subcategories 
-        ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory)?.name 
-        : null;
-      const subCat = (subCategoryName || '').toLowerCase();
-      
-      const loc = (tx.location?.address || '').toLowerCase();
-      const amt = tx.amount.toString();
-
-      return desc.includes(query) || 
-             cat.includes(query) || 
-             subCat.includes(query) || 
-             loc.includes(query) || 
-             amt.includes(query);
-    });
-    
-  const grouped = groupByDate(filteredData);
-  const totalFiltered = filteredData.reduce((acc: number, tx: any) => acc + (tx.type === 'expense' ? -tx.amount : tx.amount), 0);
+  const grouped = groupByDate(transactions);
 
   return (
     <div className="px-4 py-3 md:p-8 space-y-4 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto">
@@ -137,26 +350,64 @@ export default function HistoryPage() {
           <p className="text-[11px] text-muted-foreground uppercase mt-0.5 tracking-wider">Your complete transaction log</p>
         </div>
         
-        {/* Search Input */}
-        <div className="relative w-full md:max-w-xs animate-in fade-in zoom-in duration-500">
-          <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-            <Search className="w-4 h-4 text-muted-foreground" />
-          </div>
-          <input 
-            type="text" 
-            placeholder="Search transactions..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-card border border-border rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-muted-foreground/50"
-          />
-          {searchQuery && (
-            <button 
-              onClick={() => setSearchQuery('')}
-              className="absolute inset-y-0 right-3 flex items-center"
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* Export Dropdown */}
+          <div className="relative group">
+            <button
+              disabled={exporting || transactions.length === 0}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-card border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              <X className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+              {exporting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> Exporting...
+                </>
+              ) : (
+                <>
+                  <Download className="w-3.5 h-3.5 text-primary" /> Export
+                </>
+              )}
             </button>
-          )}
+            <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block hover:block z-50 min-w-[125px]">
+              <div className="bg-[#131315] border border-border rounded-xl shadow-xl overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => handleExport('csv')}
+                  className="w-full text-left px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
+                >
+                  CSV format
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport('excel')}
+                  className="w-full text-left px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-1.5 border-t border-border/20 cursor-pointer font-medium"
+                >
+                  Excel (.xls)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative flex-1 md:flex-none md:w-64">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <input 
+              type="text" 
+              placeholder="Search transactions..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-card border border-border rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-muted-foreground/50"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-3 flex items-center animate-in fade-in"
+              >
+                <X className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -206,28 +457,28 @@ export default function HistoryPage() {
       {timeFilter === 'custom' && (
         <div className="flex items-center gap-3 p-3 bg-accent rounded-xl animate-in fade-in duration-300">
            <div className="flex-1">
-             <label className="text-[10px] uppercase  text-muted-foreground mb-1 block">Start Date</label>
+             <label className="text-[10px] uppercase text-muted-foreground mb-1 block">Start Date</label>
              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-full bg-card rounded-lg border-border text-xs py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary" />
            </div>
            <div className="flex-1">
-             <label className="text-[10px] uppercase  text-muted-foreground mb-1 block">End Date</label>
+             <label className="text-[10px] uppercase text-muted-foreground mb-1 block">End Date</label>
              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-full bg-card rounded-lg border-border text-xs py-2 px-3 focus:outline-none focus:ring-1 focus:ring-primary" />
            </div>
         </div>
       )}
 
       {/* Summary strip */}
-      {filteredData.length > 0 && (
+      {transactions.length > 0 && (
         <div className="flex items-center justify-between px-4 py-3 bg-card rounded-2xl border border-border">
-          <span className="text-xs text-muted-foreground">{filteredData.length} transactions</span>
-          <span className={`font-heading font-bold text-sm ${totalFiltered >= 0 ? 'text-primary' : 'text-destructive'}`}>
-            {totalFiltered >= 0 ? '+' : ''}₹{Math.abs(totalFiltered).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+          <span className="text-xs text-muted-foreground">{totalCount} transactions</span>
+          <span className={`font-heading font-bold text-sm ${totalBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
+            {totalBalance >= 0 ? '+' : ''}₹{Math.abs(totalBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
           </span>
         </div>
       )}
 
       {/* Grouped Transactions */}
-      {filteredData.length === 0 ? (
+      {transactions.length === 0 ? (
         <div className="text-center py-16 flex flex-col items-center gap-3">
           <SearchX className="w-10 h-10 text-muted-foreground/30" />
           <p className="text-sm font-medium text-muted-foreground">No transactions found</p>
@@ -236,7 +487,7 @@ export default function HistoryPage() {
         <div className="space-y-6">
           {grouped.map(({ dateLabel, txs }) => (
             <div key={dateLabel}>
-              <p className="text-[11px] font-bold uppercase  text-muted-foreground mb-2 px-1">{dateLabel}</p>
+              <p className="text-[11px] font-bold uppercase text-muted-foreground mb-2 px-1">{dateLabel}</p>
               <div className="space-y-2">
                 {txs.map((tx: any) => {
                   const subCategoryName = tx.subcategory && tx.category?.subcategories 
@@ -244,17 +495,27 @@ export default function HistoryPage() {
                     : null;
 
                   return (
-                  <SwipeableTxCard 
-                    key={tx._id} 
-                    tx={tx} 
-                    subCategoryName={subCategoryName} 
-                    onEdit={() => router.push(`/dashboard/edit?id=${tx._id}`)}
-                    onDelete={() => setDeleteConfirmId(tx._id)}
-                  />
-                )})}
+                    <SwipeableTxCard 
+                      key={tx._id} 
+                      tx={tx} 
+                      subCategoryName={subCategoryName} 
+                      onEdit={() => router.push(`/dashboard/edit?id=${tx._id}`)}
+                      onDelete={() => setDeleteConfirmId(tx._id)}
+                    />
+                  );
+                })}
               </div>
             </div>
           ))}
+          
+          {loadingMore && (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          )}
+          {!hasMore && transactions.length > 0 && (
+            <p className="text-[10px] text-center text-muted-foreground uppercase py-4">End of transaction history</p>
+          )}
         </div>
       )}
 

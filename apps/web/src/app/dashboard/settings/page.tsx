@@ -5,6 +5,7 @@ import { Moon, Sun, Check, Circle, Square, Settings as SettingsIcon, LogOut, Che
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import api from "@/lib/api";
 
 const COLORS = [
   { name: 'Neon Green', hex: '#6bfe9c' },
@@ -22,14 +23,35 @@ const RADIUS = [
 
 export default function SettingsPage() {
   const { theme, setTheme, accentColor, setAccentColor, radius, setRadius } = useThemeStore();
-  const { user, logout } = useAuthStore();
+  const { user, setUser, logout } = useAuthStore();
   const router = useRouter();
 
   const [mounted, setMounted] = useState(false);
+  const [autoOpenKeyboard, setAutoOpenKeyboard] = useState(user?.settings?.autoOpenKeyboard ?? true);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleToggleKeyboard = async (checked: boolean) => {
+    setAutoOpenKeyboard(checked);
+    setUpdatingSettings(true);
+    try {
+      const res = await api.put('/auth/settings', { autoOpenKeyboard: checked });
+      if (user) {
+        setUser({
+          ...user,
+          settings: res.data.settings
+        });
+      }
+    } catch (err) {
+      console.error("Failed to update user settings:", err);
+      setAutoOpenKeyboard(!checked);
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -123,6 +145,33 @@ export default function SettingsPage() {
             ))}
           </div>
           </div>
+      </section>
+
+      {/* Ledger Preferences */}
+      <section className="space-y-4 pt-4 border-t border-border">
+        <h3 className="font-heading text-lg font-bold text-foreground">Ledger Preferences</h3>
+        
+        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card/50">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+              <SettingsIcon className="w-4 h-4 text-primary" />
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-sm text-foreground">Auto-Open Keyboard</p>
+              <p className="text-[10px] text-muted-foreground uppercase mt-0.5">Open keypad automatically on Add Transaction</p>
+            </div>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer select-none">
+            <input 
+              type="checkbox" 
+              checked={autoOpenKeyboard} 
+              disabled={updatingSettings}
+              onChange={(e) => handleToggleKeyboard(e.target.checked)}
+              className="sr-only peer" 
+            />
+            <div className="w-9 h-5 bg-zinc-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-black"></div>
+          </label>
+        </div>
       </section>
 
       {/* Application Data */}

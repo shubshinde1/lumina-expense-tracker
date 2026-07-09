@@ -156,7 +156,7 @@ public class SmsReceiver extends BroadcastReceiver {
             String pendingJson = prefs.getString("pendingSmsList", "[]");
             JSONArray array = new JSONArray(pendingJson);
             array.put(messageBody);
-            prefs.edit().putString("pendingSmsList", array.toString()).apply();
+            prefs.edit().putString("pendingSmsList", array.toString()).commit();
             Log.d("LuminaSmsReceiver", "Saved SMS to pending list: " + messageBody);
         } catch (Exception e) {
             Log.e("LuminaSmsReceiver", "Failed to save pending SMS", e);
@@ -203,7 +203,8 @@ public class SmsReceiver extends BroadcastReceiver {
             ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE 
             : PendingIntent.FLAG_UPDATE_CURRENT;
             
-        PendingIntent pendingIntent = PendingIntent.getActivity(context, 0, launchIntent, pendingFlags);
+        int notificationId = (int) System.currentTimeMillis();
+        PendingIntent pendingIntent = PendingIntent.getActivity(context, notificationId, launchIntent, pendingFlags);
         
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
@@ -213,7 +214,7 @@ public class SmsReceiver extends BroadcastReceiver {
             .setContentIntent(pendingIntent)
             .setAutoCancel(true);
             
-        notificationManager.notify((int) System.currentTimeMillis(), builder.build());
+        notificationManager.notify(notificationId, builder.build());
     }
 
     private boolean isTransactionSms(String body) {

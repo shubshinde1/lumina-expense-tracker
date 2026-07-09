@@ -22,12 +22,16 @@ export default function DashboardLayout({
         const { registerPlugin } = await import("@capacitor/core");
         const LuminaBridge = registerPlugin<any>('LuminaBridge');
 
+        const checkForLaunchRoute = async () => {
+          const res = await LuminaBridge.getLaunchRoute();
+          if (active && res && res.route) {
+            console.log("🚀 Redirecting to launching route:", res.route);
+            router.push(res.route);
+          }
+        };
+
         // 1. Cold Start Check: Retrieve initial launching route from Native Intent
-        const res = await LuminaBridge.getLaunchRoute();
-        if (active && res && res.route) {
-          console.log("🚀 Redirecting to launching route (Cold start):", res.route);
-          router.push(res.route);
-        }
+        await checkForLaunchRoute();
 
         // 2. Warm Start Check: Listen to real-time route navigation intent updates
         const handleNativeNavigate = (e: any) => {
@@ -40,8 +44,19 @@ export default function DashboardLayout({
 
         window.addEventListener("navigateToRoute", handleNativeNavigate);
 
+        // 3. Failsafe checks: Trigger on resume and focus
+        const handleResume = () => {
+          console.log("📱 App resumed or focused, checking launch route...");
+          checkForLaunchRoute();
+        };
+
+        document.addEventListener("resume", handleResume);
+        window.addEventListener("focus", handleResume);
+
         return () => {
           window.removeEventListener("navigateToRoute", handleNativeNavigate);
+          document.removeEventListener("resume", handleResume);
+          window.removeEventListener("focus", handleResume);
         };
       } catch (err) {
         console.warn("Launch navigation setup failed:", err);

@@ -27,7 +27,7 @@ public class LuminaBridgePlugin extends Plugin {
              .putString("token", token)
              .putString("email", email)
              .putString("apiUrl", apiUrl)
-             .apply();
+             .commit();
 
         call.resolve();
     }
@@ -39,7 +39,7 @@ public class LuminaBridgePlugin extends Plugin {
              .remove("token")
              .remove("email")
              .remove("apiUrl")
-             .apply();
+             .commit();
         call.resolve();
     }
 
@@ -56,7 +56,7 @@ public class LuminaBridgePlugin extends Plugin {
     @PluginMethod
     public void clearPendingSmsList(PluginCall call) {
         SharedPreferences prefs = getContext().getSharedPreferences("LuminaPrefs", Context.MODE_PRIVATE);
-        prefs.edit().remove("pendingSmsList").apply();
+        prefs.edit().remove("pendingSmsList").commit();
         call.resolve();
     }
 
@@ -68,7 +68,7 @@ public class LuminaBridgePlugin extends Plugin {
             return;
         }
         SharedPreferences prefs = getContext().getSharedPreferences("LuminaPrefs", Context.MODE_PRIVATE);
-        prefs.edit().putString("pendingSmsList", smsListJson).apply();
+        prefs.edit().putString("pendingSmsList", smsListJson).commit();
         call.resolve();
     }
 

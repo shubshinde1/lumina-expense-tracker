@@ -32,6 +32,7 @@ function AddTransactionForm() {
   // Voice AI & SMS Parsing States
   const [isRecording, setIsRecording] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
+  const [journeyType, setJourneyType] = useState<"voice" | "message">("voice");
   const [smsPasteText, setSmsPasteText] = useState("");
   const [showPasteBox, setShowPasteBox] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -44,13 +45,18 @@ function AddTransactionForm() {
   useEffect(() => {
     const rawSms = searchParams.get('sms');
     if (rawSms) {
-      handleParseText(rawSms);
+      handleParseText(rawSms, "message");
     }
   }, [searchParams]);
 
-  const handleParseText = async (text: string) => {
+  const handleParseText = async (text: string, source: "voice" | "message" = "message") => {
     try {
       setIsParsing(true);
+      if (source === "message") {
+        setJourneyType("message");
+        setDebugLogs([]);
+        addDebugLog("Message parsing triggered.");
+      }
       addDebugLog(`Parsing Started. Spoken/SMS Text: "${text}"`);
       addDebugLog(`Querying Endpoint: ${api.defaults.baseURL || "/api"}/transactions/parse`);
 
@@ -105,6 +111,7 @@ function AddTransactionForm() {
 
   const startVoiceRecognition = async () => {
     // Clear logs for fresh run
+    setJourneyType("voice");
     setDebugLogs([]);
     addDebugLog("Voice logging triggered.");
 
@@ -195,7 +202,7 @@ function AddTransactionForm() {
               status: "Speech captured",
               transcription: transcript
             }));
-            handleParseText(transcript);
+            handleParseText(transcript, "voice");
           } else {
             throw new Error("No match");
           }
@@ -607,7 +614,7 @@ function AddTransactionForm() {
                   type="button"
                   onClick={() => {
                     if (smsPasteText) {
-                      handleParseText(smsPasteText);
+                      handleParseText(smsPasteText, "message");
                       setSmsPasteText("");
                       setShowPasteBox(false);
                     }
@@ -637,7 +644,17 @@ function AddTransactionForm() {
       {debugLogs.length > 0 && (
         <div className="w-full mt-8 p-5 rounded-3xl bg-[#131315] border border-border text-zinc-300 font-mono text-[11px] space-y-4 shadow-2xl">
           <div className="flex items-center justify-between border-b border-border pb-2.5">
-            <span className="text-[#6bfe9c] font-black uppercase text-[10px] tracking-wider">Voice Journey Timeline</span>
+            <span className="text-[#6bfe9c] font-black uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+              {journeyType === "voice" ? (
+                <>
+                  <Mic className="w-3.5 h-3.5" /> Voice Journey Timeline
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-3.5 h-3.5" /> Message Journey Timeline
+                </>
+              )}
+            </span>
             <button 
               type="button" 
               onClick={() => { setDebugLogs([]); setDebugData(null); }}

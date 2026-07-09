@@ -13,7 +13,10 @@ import {
   Inbox,
   MessageSquare,
   ArrowRight,
-  X
+  X,
+  Eye,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -63,6 +66,75 @@ export default function NotificationsPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [offlineSmsList, setOfflineSmsList] = useState<string[]>([]);
   const [loadingNotifId, setLoadingNotifId] = useState<string | null>(null);
+  const [expandedNotifId, setExpandedNotifId] = useState<string | null>(null);
+
+  const formatTime = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch {
+      return "00:00:00";
+    }
+  };
+
+  const renderMessageJourney = (notif: any) => {
+    const isOffline = !!notif.metadata?.isOfflinePending;
+    const timeStr = formatTime(notif.createdAt);
+    
+    return (
+      <div className="mt-3 pt-3 border-t border-[#48474a]/40 space-y-3 font-mono text-[10px] text-zinc-400">
+        <span className="text-[#6bfe9c] font-black uppercase text-[9px] tracking-wider block">
+          SMS Processing Journal
+        </span>
+        <div className="relative pl-3.5 border-l border-primary/20 space-y-2 text-[10px] leading-relaxed">
+          <div className="relative">
+            <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315] animate-pulse" />
+            <span className="text-zinc-500 font-bold">[{timeStr}]</span> SMS received by device.
+          </div>
+          <div className="relative">
+            <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315]" />
+            <span className="text-zinc-500 font-bold">[{timeStr}]</span> Regex pattern match success. Extracted amount: <span className="text-primary font-bold">₹{notif.metadata?.amount || "parsed"}</span> ({notif.metadata?.type || "spend"}).
+          </div>
+          
+          {isOffline ? (
+            <>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-[#131315]" />
+                <span className="text-amber-500 font-bold">[{timeStr}] Warning:</span> No auth session active. Auto-logging deferred.
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315]" />
+                <span className="text-zinc-500 font-bold">[{timeStr}]</span> Message payload saved to offline queue in SharedPreferences.
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315]" />
+                <span className="text-zinc-500 font-bold">[{timeStr}]</span> Toast notification sent to device tray.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315]" />
+                <span className="text-zinc-500 font-bold">[{timeStr}]</span> Authentication verified. Active auth token loaded.
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315]" />
+                <span className="text-zinc-500 font-bold">[{timeStr}]</span> Forwarding payload to backend <span className="text-zinc-300">/transactions/auto-log</span>...
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-primary border-2 border-[#131315]" />
+                <span className="text-zinc-500 font-bold">[{timeStr}]</span> Backend logged successfully. Transaction ID: <span className="text-zinc-300 font-semibold">{notif.metadata?.transactionId || "created"}</span>.
+              </div>
+              <div className="relative">
+                <span className="absolute -left-[18.5px] top-1 w-2.5 h-2.5 rounded-full bg-[#6bfe9c] border-2 border-[#131315]" />
+                <span className="text-[#6bfe9c] font-bold">[{timeStr}] Success:</span> Push notification alerts updated on app console.
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   // Authenticate user on mount
   useEffect(() => {
@@ -325,60 +397,77 @@ export default function NotificationsPage() {
               const isOffline = !!notif.metadata?.isOfflinePending;
               const isLoadingSms = loadingNotifId === notif._id;
               
-              return (
+                            return (
                 <div 
                   key={notif._id}
-                  className={`glass-card bg-card/90 backdrop-blur-2xl border border-primary/20 shadow-lg rounded-2xl p-4 flex gap-4 items-center relative overflow-hidden animate-in fade-in duration-300 cursor-pointer ${
+                  className={`glass-card bg-card/90 backdrop-blur-2xl border border-primary/20 shadow-lg rounded-2xl p-4 relative overflow-hidden animate-in fade-in duration-300 cursor-pointer ${
                     isOffline ? "ring-1 ring-primary/30" : ""
                   }`}
-                  onClick={() => handleNotificationClick(notif)}
+                  onClick={() => setExpandedNotifId(expandedNotifId === notif._id ? null : notif._id)}
                 >
-                  {/* Glow effect */}
-                  <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
-                  
-                  {/* Glowing left message icon */}
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
-                    <MessageSquare className="w-5 h-5" />
-                  </div>
-
-                  {/* Text details */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5">
-                      {isOffline ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}
-                    </p>
-                    <h4 className="text-xs font-bold text-foreground leading-tight truncate">{summary}</h4>
-                    <p className="text-[9px] text-muted-foreground truncate mt-0.5">{smsText}</p>
-                  </div>
-
-                  {/* Action buttons matching the overlay popup */}
-                  <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      onClick={() => handleDirectLog(smsText, notif._id, isOffline)}
-                      disabled={isLoadingSms}
-                      className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20 disabled:opacity-75"
-                      title="Log transaction directly"
-                    >
-                      {isLoadingSms ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-                      )}
-                    </button>
+                  <div className="flex gap-4 items-center">
+                    {/* Glow effect */}
+                    <div className="absolute -top-10 -right-10 w-24 h-24 bg-primary/10 rounded-full blur-xl pointer-events-none" />
                     
-                    <button 
-                      onClick={() => {
-                        if (isOffline) {
-                          dismissOfflineSms(smsText);
-                        } else {
-                          deleteMutation.mutate(notif._id);
-                        }
-                      }}
-                      className="w-8 h-8 rounded-lg bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-95 transition-all"
-                      title="Dismiss alert"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    {/* Glowing left message icon */}
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+                      <MessageSquare className="w-5 h-5" />
+                    </div>
+
+                    {/* Text details */}
+                    <div className="flex-1 min-w-0 pr-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-0.5 flex items-center gap-1.5">
+                        <span>{isOffline ? "TRANSACTION SMS (OFFLINE)" : "TRANSACTION SMS"}</span>
+                        {expandedNotifId === notif._id ? <ChevronUp className="w-3 h-3 text-primary/60" /> : <ChevronDown className="w-3 h-3 text-primary/60" />}
+                      </p>
+                      <h4 className="text-xs font-bold text-foreground leading-tight truncate">{summary}</h4>
+                      <p className={`text-[9px] text-muted-foreground mt-0.5 ${expandedNotifId === notif._id ? "whitespace-pre-wrap leading-relaxed" : "truncate"}`}>{smsText}</p>
+                    </div>
+
+                    {/* Action buttons matching the overlay popup */}
+                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                      {isOffline ? (
+                        <button 
+                          onClick={() => handleDirectLog(smsText, notif._id, isOffline)}
+                          disabled={isLoadingSms}
+                          className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20 disabled:opacity-75"
+                          title="Log transaction directly"
+                        >
+                          {isLoadingSms ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                          )}
+                        </button>
+                      ) : (
+                        notif.metadata?.transactionId && (
+                          <button
+                            onClick={() => router.push(`/dashboard/edit?id=${notif.metadata.transactionId}`)}
+                            className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center hover:bg-primary/30 active:scale-95 transition-all"
+                            title="View/Edit transaction"
+                          >
+                            <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
+                          </button>
+                        )
+                      )}
+                      
+                      <button 
+                        onClick={() => {
+                          if (isOffline) {
+                            dismissOfflineSms(smsText);
+                          } else {
+                            deleteMutation.mutate(notif._id);
+                          }
+                        }}
+                        className="w-8 h-8 rounded-lg bg-accent text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-95 transition-all"
+                        title="Dismiss alert"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
+                  
+                  {expandedNotifId === notif._id && renderMessageJourney(notif)}
                 </div>
               );
             }

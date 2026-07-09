@@ -377,8 +377,16 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
     
     if (existingNotif) {
       console.log(`[SMS-READER DEBUG] Duplicate detected! SMS already logged. Notification ID: ${existingNotif._id}`);
-      const existingTx = await Transaction.findById(existingNotif.metadata.transactionId)
-        .populate("category", "name icon color subcategories");
+      
+      const metadata = existingNotif.metadata;
+      const transactionId = metadata instanceof Map 
+        ? metadata.get("transactionId") 
+        : (metadata as any)?.transactionId;
+
+      const existingTx = transactionId 
+        ? await Transaction.findById(transactionId).populate("category", "name icon color subcategories")
+        : null;
+
       res.status(200).json({
         transaction: existingTx,
         message: "This transaction has already been logged."

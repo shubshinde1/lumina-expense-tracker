@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, use, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -30,6 +30,18 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
   const [historySortOrder, setHistorySortOrder] = useState("desc");
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [exportingHistory, setExportingHistory] = useState(false);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setIsExportDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchHistory = async () => {
     try {
@@ -490,8 +502,10 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
               )}
 
               {/* Export Dropdown */}
-              <div className="relative group">
+              <div className="relative" ref={exportDropdownRef}>
                 <button
+                  type="button"
+                  onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
                   disabled={exportingHistory || totalHistory === 0}
                   className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 border border-[#48474a]/50 rounded-lg text-[11px] font-bold text-zinc-300 hover:text-white hover:bg-zinc-700 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
                 >
@@ -505,24 +519,32 @@ export default function UserDetailPage({ params: paramsPromise }: { params: Prom
                     </>
                   )}
                 </button>
-                <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block hover:block z-50 min-w-[120px]">
-                  <div className="bg-[#131315] border border-[#48474a] rounded-lg shadow-xl overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => handleExport('csv')}
-                      className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer"
-                    >
-                      CSV format
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleExport('excel')}
-                      className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] transition-colors flex items-center gap-1.5 border-t border-[#48474a]/20 cursor-pointer"
-                    >
-                      Excel (.xls)
-                    </button>
+                {isExportDropdownOpen && (
+                  <div className="absolute left-0 top-full pt-1.5 z-50 min-w-[120px] animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="bg-[#131315] border border-[#48474a] rounded-lg shadow-xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleExport('csv');
+                          setIsExportDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+                      >
+                        CSV format
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleExport('excel');
+                          setIsExportDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 text-[10px] font-bold text-zinc-400 hover:text-white hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] transition-colors flex items-center gap-1.5 border-t border-[#48474a]/20 cursor-pointer"
+                      >
+                        Excel (.xls)
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Type toggle */}

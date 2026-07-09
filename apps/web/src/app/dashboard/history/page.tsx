@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw, Search, X, Download } from "lucide-react";
 import api from "@/lib/api";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useThemeStore } from "@/stores/useThemeStore";
@@ -57,6 +57,18 @@ export default function HistoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [exporting, setExporting] = useState(false);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setIsExportDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Search input debouncer
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
@@ -351,11 +363,35 @@ export default function HistoryPage() {
         </div>
         
         <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* Search Input */}
+          <div className="relative flex-1 md:flex-none md:w-64">
+            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <input 
+              type="text" 
+              placeholder="Search transactions..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-card border border-border rounded-xl h-[42px] pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-muted-foreground/50"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-3 flex items-center animate-in fade-in"
+              >
+                <X className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+              </button>
+            )}
+          </div>
+
           {/* Export Dropdown */}
-          <div className="relative group">
+          <div className="relative" ref={exportDropdownRef}>
             <button
+              type="button"
+              onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
               disabled={exporting || transactions.length === 0}
-              className="flex items-center gap-1.5 px-3.5 py-2.5 bg-card border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3.5 h-[42px] bg-card border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {exporting ? (
                 <>
@@ -367,45 +403,31 @@ export default function HistoryPage() {
                 </>
               )}
             </button>
-            <div className="absolute right-0 top-full pt-1.5 hidden group-hover:block hover:block z-50 min-w-[125px]">
-              <div className="bg-[#131315] border border-border rounded-xl shadow-xl overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => handleExport('csv')}
-                  className="w-full text-left px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
-                >
-                  CSV format
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleExport('excel')}
-                  className="w-full text-left px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-1.5 border-t border-border/20 cursor-pointer font-medium"
-                >
-                  Excel (.xls)
-                </button>
+            {isExportDropdownOpen && (
+              <div className="absolute right-0 top-full pt-1.5 z-50 min-w-[125px] animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="bg-[#131315] border border-border rounded-xl shadow-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleExport('csv');
+                      setIsExportDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer font-medium"
+                  >
+                    CSV format
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleExport('excel');
+                      setIsExportDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs text-zinc-400 hover:text-white hover:bg-primary/10 hover:text-primary transition-colors flex items-center gap-1.5 border-t border-border/20 cursor-pointer font-medium"
+                  >
+                    Excel (.xls)
+                  </button>
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* Search Input */}
-          <div className="relative flex-1 md:flex-none md:w-64">
-            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-              <Search className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Search transactions..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-card border border-border rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:ring-1 focus:ring-primary transition-all shadow-sm placeholder:text-muted-foreground/50"
-            />
-            {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-3 flex items-center animate-in fade-in"
-              >
-                <X className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
-              </button>
             )}
           </div>
         </div>

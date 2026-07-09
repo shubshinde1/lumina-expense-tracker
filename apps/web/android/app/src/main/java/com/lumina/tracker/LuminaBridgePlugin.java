@@ -2,6 +2,7 @@ package com.lumina.tracker;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.util.Log;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
@@ -18,9 +19,12 @@ public class LuminaBridgePlugin extends Plugin {
         String apiUrl = call.getString("apiUrl");
 
         if (token == null || email == null || apiUrl == null) {
+            Log.e("LuminaBridgePlugin", "saveUserSession failed: Token, email, or API URL is null.");
             call.reject("Token, email, and API URL are required");
             return;
         }
+
+        Log.d("LuminaBridgePlugin", "saveUserSession: Syncing session to SharedPreferences. Email: " + email + ", API: " + apiUrl);
 
         SharedPreferences prefs = getContext().getSharedPreferences("LuminaPrefs", Context.MODE_PRIVATE);
         prefs.edit()
@@ -34,6 +38,7 @@ public class LuminaBridgePlugin extends Plugin {
 
     @PluginMethod
     public void clearUserSession(PluginCall call) {
+        Log.d("LuminaBridgePlugin", "clearUserSession: Clearing user session from SharedPreferences.");
         SharedPreferences prefs = getContext().getSharedPreferences("LuminaPrefs", Context.MODE_PRIVATE);
         prefs.edit()
              .remove("token")

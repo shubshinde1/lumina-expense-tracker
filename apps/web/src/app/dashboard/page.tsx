@@ -89,6 +89,7 @@ export default function DashboardPage() {
           if (smsList && smsList.length > 0) {
             console.log(`Found ${smsList.length} offline pending SMS messages to sync.`);
             
+            const remainingSms: string[] = [];
             let successCount = 0;
             const { toast } = await import("sonner");
             
@@ -98,14 +99,17 @@ export default function DashboardPage() {
                 successCount++;
               } catch (err) {
                 console.error("Failed to sync offline SMS:", smsText, err);
+                remainingSms.push(smsText);
               }
             }
             
-            await LuminaBridge.clearPendingSmsList();
+            // Only update preferences with failed syncs
+            await LuminaBridge.savePendingSmsList({ smsList: JSON.stringify(remainingSms) });
             
             if (successCount > 0) {
               toast.success(`Synchronized ${successCount} background offline transaction(s)!`);
               queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+              queryClient.invalidateQueries({ queryKey: ['notifications'] });
             }
           }
         }

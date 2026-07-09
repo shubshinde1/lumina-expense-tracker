@@ -84,7 +84,8 @@ public class SmsReceiver extends BroadcastReceiver {
             String type = parseTypeLocally(messageBody);
             savePendingSms(context, messageBody);
             showNotification(context, "Captured Transaction", 
-                "Detected " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + ". Log in to save directly.");
+                "Detected " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + ". Log in to save directly.",
+                "/dashboard/notifications");
             return;
         }
 
@@ -127,8 +128,11 @@ public class SmsReceiver extends BroadcastReceiver {
                 String desc = transaction.getString("description");
                 String type = transaction.getString("type");
 
+                String transactionId = transaction.getString("_id");
+
                 showNotification(context, "Auto-Logging Transaction", 
-                    "Logged " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + " at " + desc + ". Tap to view/edit.");
+                    "Logged " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + " at " + desc + ". Tap to view/edit.",
+                    "/dashboard/edit?id=" + transactionId);
                 Log.d("LuminaSmsReceiver", "Successfully auto-logged transaction to backend database.");
             } else {
                 Log.e("LuminaSmsReceiver", "Backend rejection code: " + responseCode);
@@ -147,7 +151,8 @@ public class SmsReceiver extends BroadcastReceiver {
         savePendingSms(context, messageBody);
         
         showNotification(context, "Transaction Auto-Logged (Offline)", 
-            "Recorded " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + " locally. Tap to sync when online.");
+            "Recorded " + (type.equals("income") ? "income" : "spend") + " of ₹" + amount + " locally. Tap to sync when online.",
+            "/dashboard/notifications");
     }
 
     private void savePendingSms(Context context, String messageBody) {
@@ -166,10 +171,22 @@ public class SmsReceiver extends BroadcastReceiver {
     private double parseAmountLocally(String body) {
         if (body == null) return 0.0;
         try {
-            Pattern pattern = Pattern.compile("(?:rs\\.?|inr|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
-            Matcher matcher = pattern.matcher(body);
-            if (matcher.find()) {
-                String valStr = matcher.group(1).replace(",", "");
+            // First pass: look specifically for debited/credited/paid/spent/sent/received/added/deposited/transfer/withdrawn followed by amount
+            Pattern priorityPattern = Pattern.compile(
+                "(?:debited|credited|paid|spent|sent|received|added|deposited|transfer|withdrawn|Rs\\.?|INR|₹)\\s*(?:for|of)?\\s*(?:rs\\.?|inr|₹)?\\s*([\\d,]+(?:\\.\\d{1,2})?)", 
+                Pattern.CASE_INSENSITIVE
+            );
+            Matcher priorityMatcher = priorityPattern.matcher(body);
+            if (priorityMatcher.find()) {
+                String valStr = priorityMatcher.group(1).replace(",", "");
+                return Double.parseDouble(valStr);
+            }
+
+            // Fallback: standard currency pattern matching
+            Pattern fallbackPattern = Pattern.compile("(?:rs\\.?|inr|₹)\\s*([\\d,]+(?:\\.\\d{1,2})?)", Pattern.CASE_INSENSITIVE);
+            Matcher fallbackMatcher = fallbackPattern.matcher(body);
+            if (fallbackMatcher.find()) {
+                String valStr = fallbackMatcher.group(1).replace(",", "");
                 return Double.parseDouble(valStr);
             }
         } catch (Exception e) {
@@ -185,7 +202,7 @@ public class SmsReceiver extends BroadcastReceiver {
         return isCredit ? "income" : "expense";
     }
 
-    private void showNotification(Context context, String title, String content) {
+    private void showNotification(Context context, String title, String content, String route) {
         NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         String channelId = "lumina_sms_alerts";
         
@@ -197,7 +214,7 @@ public class SmsReceiver extends BroadcastReceiver {
         
         Intent launchIntent = new Intent(context, MainActivity.class);
         launchIntent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        launchIntent.putExtra("route", "/dashboard/notifications");
+        launchIntent.putExtra("route", route);
         
         int pendingFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M 
             ? PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE 
@@ -220,7 +237,22 @@ public class SmsReceiver extends BroadcastReceiver {
     private boolean isTransactionSms(String body) {
         if (body == null) return false;
         String lower = body.toLowerCase();
-        boolean isDebit = lower.contains("debited") || lower.contains("spent") || lower.contains("charged") || lower.contains("paid");
+        
+        // Exclude failed or declined attempts to prevent auto-logging errors
+        if (lower.contains("failed") || 
+            lower.contains("declined") || 
+            lower.contains("reverted") || 
+            lower.contains("returned") || 
+            lower.contains("cancelled") || 
+            lower.contains("unsuccessful") ||
+            lower.contains("insufficient")) {
+            return false;
+        }
+
+        boolean isDebit = lower.contains("debited") || lower.contains("spent") || lower.contains("charged") || 
+                          lower.contains("paid") || lower.contains("sent") || lower.contains("withdrawn") || 
+                          lower.contains("transfer") || lower.contains("txn") || lower.contains("transaction");
+                          
         boolean isCredit = lower.contains("credited") || lower.contains("received") || lower.contains("added") || lower.contains("deposited");
         boolean hasCurrency = lower.contains("rs") || lower.contains("inr") || lower.contains("₹") || lower.contains("rupees");
         

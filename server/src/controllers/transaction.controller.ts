@@ -355,19 +355,49 @@ export const parseNaturalLanguage = async (req: AuthRequest, res: Response): Pro
 export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { smsText } = req.body;
+    console.log(`\n[SMS-READER DEBUG] === Incoming Auto-Log Request ===`);
+    console.log(`[SMS-READER DEBUG] SMS Body: "${smsText}"`);
+    console.log(`[SMS-READER DEBUG] User ID:  ${req.user._id} (${req.user.email})`);
+
     if (!smsText) {
+      console.log(`[SMS-READER DEBUG] Failed: Missing smsText parameter.`);
       res.status(400).json({ message: "SMS text is required" });
       return;
     }
 
     const userId = req.user._id;
+
+    // Check for duplicate SMS logs to prevent double logging
+    console.log(`[SMS-READER DEBUG] Checking database for duplicate logs...`);
+    const existingNotif = await Notification.findOne({
+      user: userId,
+      type: "transaction",
+      "metadata.smsText": smsText
+    });
+    
+    if (existingNotif) {
+      console.log(`[SMS-READER DEBUG] Duplicate detected! SMS already logged. Notification ID: ${existingNotif._id}`);
+      const existingTx = await Transaction.findById(existingNotif.metadata.transactionId)
+        .populate("category", "name icon color subcategories");
+      res.status(200).json({
+        transaction: existingTx,
+        message: "This transaction has already been logged."
+      });
+      return;
+    }
+
+    console.log(`[SMS-READER DEBUG] Forwarding SMS to Gemini NLP parser engine...`);
     const parsed = await parseTransactionTextHelper(smsText, userId);
+    console.log(`[SMS-READER DEBUG] NLP Parsing Success!`);
+    console.log(`[SMS-READER DEBUG] Extracted details:`, JSON.stringify(parsed, null, 2));
 
     if (parsed.amount <= 0) {
+      console.log(`[SMS-READER DEBUG] Failed: Parser could not extract a valid positive amount.`);
       res.status(400).json({ message: "Could not parse a valid amount from SMS." });
       return;
     }
 
+    console.log(`[SMS-READER DEBUG] Creating Transaction record in MongoDB database...`);
     const transaction = await Transaction.create({
       user: userId,
       type: parsed.type,
@@ -378,9 +408,11 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
       subcategory: parsed.subcategory || undefined,
       paymentMode: parsed.paymentMode
     });
+    console.log(`[SMS-READER DEBUG] Transaction created successfully. ID: ${transaction._id}`);
 
     // Create an auto-log transaction notification alert in the database
-    await Notification.create({
+    console.log(`[SMS-READER DEBUG] Creating Notification record in MongoDB database...`);
+    const notification = await Notification.create({
       user: userId,
       title: "Transaction Auto-Logged",
       message: `Logged ${parsed.type === 'income' ? 'income' : 'spend'} of ₹${parsed.amount} at ${parsed.description} automatically via SMS.`,
@@ -394,15 +426,18 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
         transactionId: transaction._id.toString()
       }
     });
+    console.log(`[SMS-READER DEBUG] Notification alert created successfully. ID: ${notification._id}`);
 
     const populated = await Transaction.findById(transaction._id)
       .populate("category", "name icon color subcategories");
 
+    console.log(`[SMS-READER DEBUG] Auto-log process completed successfully! Returning response.\n`);
     res.status(201).json({
       transaction: populated,
       parsedDetails: parsed
     });
   } catch (error: any) {
+    console.error(`[SMS-READER DEBUG] CRITICAL ERROR occurred during auto-logging:`, error);
     res.status(500).json({ message: error.message });
   }
 };

@@ -7,7 +7,17 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import SmsPromptOverlay from '@/components/SmsPromptOverlay';
 
 export default function Providers({ children }: { children: React.ReactNode }) {
-  const [queryClient] = useState(() => new QueryClient());
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        networkMode: 'always',
+        retry: false,
+      },
+      mutations: {
+        networkMode: 'always',
+      }
+    }
+  }));
 
   return (
     <QueryClientProvider client={queryClient}>

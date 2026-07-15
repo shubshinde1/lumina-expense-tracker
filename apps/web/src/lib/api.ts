@@ -41,4 +41,158 @@ api.interceptors.response.use(
   }
 );
 
+// Offline Mode Integration Interceptors
+import { getCacheKey, applyOptimisticUpdate, syncOfflineMutations } from './offline';
+
+const originalGet = api.get;
+const originalPost = api.post;
+const originalPut = api.put;
+const originalDelete = api.delete;
+
+api.get = async function(url: string, config?: any) {
+  if (typeof window !== 'undefined' && !navigator.onLine) {
+    const key = getCacheKey(url);
+    if (key) {
+      const cached = localStorage.getItem(key);
+      if (cached) {
+        return { data: JSON.parse(cached), status: 200, statusText: 'OK', headers: {}, config: {} as any };
+      }
+    }
+  }
+  
+  try {
+    const res: any = await originalGet.call(api, url, config);
+    if (typeof window !== 'undefined') {
+      const key = getCacheKey(url);
+      if (key && res.data) {
+        localStorage.setItem(key, JSON.stringify(res.data));
+      }
+    }
+    return res;
+  } catch (err: any) {
+    if (typeof window !== 'undefined' && (!navigator.onLine || !err.response)) {
+      const key = getCacheKey(url);
+      if (key) {
+        const cached = localStorage.getItem(key);
+        if (cached) {
+          return { data: JSON.parse(cached), status: 200, statusText: 'OK', headers: {}, config: {} as any };
+        }
+      }
+    }
+    throw err;
+  }
+} as any;
+
+api.post = async function(url: string, data?: any, config?: any) {
+  if (typeof window !== 'undefined' && !navigator.onLine) {
+    const tempId = 'temp_' + Date.now();
+    const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
+    queue.push({
+      id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      method: 'post',
+      url,
+      payload: data,
+      tempId
+    });
+    localStorage.setItem('offline_mutations_queue', JSON.stringify(queue));
+    applyOptimisticUpdate('post', url, data, tempId);
+    return { data: { _id: tempId, ...data, isOffline: true }, status: 201, statusText: 'Created', headers: {}, config: {} as any };
+  }
+  
+  try {
+    return await originalPost.call(api, url, data, config);
+  } catch (err: any) {
+    if (typeof window !== 'undefined' && !err.response) {
+      const tempId = 'temp_' + Date.now();
+      const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
+      queue.push({
+        id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        method: 'post',
+        url,
+        payload: data,
+        tempId
+      });
+      localStorage.setItem('offline_mutations_queue', JSON.stringify(queue));
+      applyOptimisticUpdate('post', url, data, tempId);
+      return { data: { _id: tempId, ...data, isOffline: true }, status: 201, statusText: 'Created', headers: {}, config: {} as any };
+    }
+    throw err;
+  }
+} as any;
+
+api.put = async function(url: string, data?: any, config?: any) {
+  if (typeof window !== 'undefined' && !navigator.onLine) {
+    const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
+    queue.push({
+      id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      method: 'put',
+      url,
+      payload: data
+    });
+    localStorage.setItem('offline_mutations_queue', JSON.stringify(queue));
+    applyOptimisticUpdate('put', url, data, '');
+    return { data: { ...data, isOffline: true }, status: 200, statusText: 'OK', headers: {}, config: {} as any };
+  }
+  
+  try {
+    return await originalPut.call(api, url, data, config);
+  } catch (err: any) {
+    if (typeof window !== 'undefined' && !err.response) {
+      const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
+      queue.push({
+        id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        method: 'put',
+        url,
+        payload: data
+      });
+      localStorage.setItem('offline_mutations_queue', JSON.stringify(queue));
+      applyOptimisticUpdate('put', url, data, '');
+      return { data: { ...data, isOffline: true }, status: 200, statusText: 'OK', headers: {}, config: {} as any };
+    }
+    throw err;
+  }
+} as any;
+
+api.delete = async function(url: string, config?: any) {
+  if (typeof window !== 'undefined' && !navigator.onLine) {
+    const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
+    queue.push({
+      id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      method: 'delete',
+      url,
+      payload: null
+    });
+    localStorage.setItem('offline_mutations_queue', JSON.stringify(queue));
+    applyOptimisticUpdate('delete', url, null, '');
+    return { data: { message: "Item deleted offline" }, status: 200, statusText: 'OK', headers: {}, config: {} as any };
+  }
+  
+  try {
+    return await originalDelete.call(api, url, config);
+  } catch (err: any) {
+    if (typeof window !== 'undefined' && !err.response) {
+      const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
+      queue.push({
+        id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+        method: 'delete',
+        url,
+        payload: null
+      });
+      localStorage.setItem('offline_mutations_queue', JSON.stringify(queue));
+      applyOptimisticUpdate('delete', url, null, '');
+      return { data: { message: "Item deleted offline" }, status: 200, statusText: 'OK', headers: {}, config: {} as any };
+    }
+    throw err;
+  }
+} as any;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => {
+    syncOfflineMutations();
+  });
+  if (navigator.onLine) {
+    syncOfflineMutations();
+  }
+}
+
 export default api;

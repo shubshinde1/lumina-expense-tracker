@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, ArrowDownRight, Wallet, Loader2, ChevronRight, TrendingDown, TrendingUp, Plus, PieChart, LayoutList, MapPin, Settings } from "lucide-react";
+import { ArrowUpRight, ArrowDownRight, Wallet, Loader2, ChevronRight, TrendingDown, TrendingUp, Plus, PieChart, LayoutList, MapPin, Settings, CloudOff } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import Link from "next/link";
@@ -146,23 +146,14 @@ export default function DashboardPage() {
   const { balance = 0, income = 0, expense = 0, recentTransactions = [] } = data || {};
 
   return (
-    <div className="px-5 py-6 md:p-12 space-y-8 animate-in fade-in duration-700 pb-32 max-w-5xl mx-auto">
-      {/* Header with Glassmorphism */}
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* Header Greeting */}
       <header className="flex items-center justify-between">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Status: Online</p>
           <h1 className="font-heading text-2xl md:text-3xl font-bold tracking-tight text-foreground">
             {getGreeting()}, <span className="text-primary">{firstName}</span>
           </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard/settings" className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm hover:bg-accent/50 transition-colors" title="Settings">
-            <Settings className="w-5 h-5 text-muted-foreground hover:text-foreground transition-colors" />
-          </Link>
-          <Link href="/dashboard/settings" className="w-12 h-12 rounded-2xl bg-card border border-border flex items-center justify-center shadow-sm overflow-hidden relative group cursor-pointer ring-1 ring-border/50" title="Profile Settings">
-             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-             <span className="font-heading font-bold text-primary group-hover:scale-110 transition-transform">{firstName[0]}</span>
-          </Link>
         </div>
       </header>
 
@@ -277,12 +268,17 @@ export default function DashboardPage() {
                 <p className={`font-bold font-heading text-sm ${tx.type === 'income' ? 'text-primary' : 'text-foreground'}`}>
                   {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString()}
                 </p>
-                {tx.location?.address && (
+                {tx.isOffline ? (
+                  <div className="flex items-center justify-end gap-1 text-[9px] text-zinc-500 mt-0.5">
+                    <CloudOff className="w-2.5 h-2.5" />
+                    <span>Offline</span>
+                  </div>
+                ) : tx.location?.address ? (
                   <div className="flex items-center justify-end gap-1 text-[9px] text-muted-foreground/50 mt-0.5">
-                    <MapPin className="w-2 h-2" />
+                    <MapPin className="w-2.5 h-2.5 shrink-0"/> 
                     <span className="truncate max-w-[80px]">{tx.location.address}</span>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )})}

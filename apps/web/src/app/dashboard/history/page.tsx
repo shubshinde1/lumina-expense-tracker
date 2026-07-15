@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw, Search, X, Download } from "lucide-react";
+import { Loader2, Trash2, Edit2, ArrowDownRight, ArrowUpRight, SearchX, MapPin, Banknote, QrCode, Building2, CreditCard, RotateCcw, Search, X, Download, CloudOff } from "lucide-react";
 import api from "@/lib/api";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -59,6 +59,19 @@ export default function HistoryPage() {
   const [exporting, setExporting] = useState(false);
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
+  const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -186,14 +199,15 @@ export default function HistoryPage() {
         scrollHeight - scrollTop - clientHeight <= 120 &&
         !loadingMore &&
         hasMore &&
-        !isLoading
+        !isLoading &&
+        isOnline
       ) {
         setPage(p => p + 1);
       }
     };
     window.addEventListener("scroll", handleScroll, { capture: true });
     return () => window.removeEventListener("scroll", handleScroll, { capture: true });
-  }, [loadingMore, hasMore, isLoading]);
+  }, [loadingMore, hasMore, isLoading, isOnline]);
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -252,7 +266,7 @@ export default function HistoryPage() {
   };
 
   const exportToCSV = (list: any[]) => {
-    const headers = ["Category", "Type", "Description", "Date", "Amount", "Payment Mode", "Location"];
+    const headers = ["Category", "Type", "Description", "Date", "Amount", "Payment Mode", "Sub Payment Mode", "Location"];
     const rows = list.map(t => [
       t.category?.name || "Other",
       t.type,
@@ -260,6 +274,7 @@ export default function HistoryPage() {
       new Date(t.date).toLocaleDateString(),
       t.amount,
       t.paymentMode || "UPI",
+      t.subPaymentMode || "",
       t.location?.address || ""
     ]);
 
@@ -300,6 +315,7 @@ export default function HistoryPage() {
         <Cell><Data ss:Type="String">${new Date(t.date).toLocaleDateString()}</Data></Cell>
         <Cell><Data ss:Type="Number">${t.amount}</Data></Cell>
         <Cell><Data ss:Type="String">${escapeXml(t.paymentMode || "UPI")}</Data></Cell>
+        <Cell><Data ss:Type="String">${escapeXml(t.subPaymentMode || "")}</Data></Cell>
         <Cell><Data ss:Type="String">${escapeXml(t.location?.address || "")}</Data></Cell>
       </Row>
     `).join("");
@@ -320,6 +336,7 @@ export default function HistoryPage() {
         <Cell><Data ss:Type="String">Date</Data></Cell>
         <Cell><Data ss:Type="String">Amount</Data></Cell>
         <Cell><Data ss:Type="String">Payment Mode</Data></Cell>
+        <Cell><Data ss:Type="String">Sub Payment Mode</Data></Cell>
         <Cell><Data ss:Type="String">Location</Data></Cell>
       </Row>
       ${rowsXML}
@@ -355,14 +372,9 @@ export default function HistoryPage() {
   const grouped = groupByDate(transactions);
 
   return (
-    <div className="px-4 py-3 md:p-8 space-y-4 animate-in fade-in duration-500 pb-32 max-w-7xl mx-auto">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold text-foreground">History</h1>
-          <p className="text-[11px] text-muted-foreground uppercase mt-0.5 tracking-wider">Your complete transaction log</p>
-        </div>
-        
-        <div className="flex items-center gap-3 w-full md:w-auto">
+        <div className="flex items-center gap-3 w-full">
           {/* Search Input */}
           <div className="relative flex-1 md:flex-none md:w-64">
             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
@@ -510,7 +522,7 @@ export default function HistoryPage() {
           {grouped.map(({ dateLabel, txs }) => (
             <div key={dateLabel}>
               <p className="text-[11px] font-bold uppercase text-muted-foreground mb-2 px-1">{dateLabel}</p>
-              <div className="space-y-2">
+              <div className="bg-card rounded-[24px] overflow-hidden border border-border/80 dark:border-zinc-800/40 shadow-sm">
                 {txs.map((tx: any) => {
                   const subCategoryName = tx.subcategory && tx.category?.subcategories 
                     ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory)?.name 
@@ -535,7 +547,14 @@ export default function HistoryPage() {
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
           )}
-          {!hasMore && transactions.length > 0 && (
+          {!isOnline && (
+            <div className="flex flex-col items-center justify-center gap-1.5 p-5 bg-zinc-900/60 border border-zinc-800/40 rounded-2xl text-center my-4 animate-in fade-in duration-300">
+              <CloudOff className="w-5 h-5 text-zinc-500" />
+              <p className="text-xs font-bold text-zinc-400">Offline Mode Active</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Reconnect to load more transaction history</p>
+            </div>
+          )}
+          {isOnline && !hasMore && transactions.length > 0 && (
             <p className="text-[10px] text-center text-muted-foreground uppercase py-4">End of transaction history</p>
           )}
         </div>
@@ -615,7 +634,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
   };
 
   return (
-    <div className="relative rounded-2xl overflow-hidden mb-3 md:mb-2 bg-card border border-border">
+    <div className="relative overflow-hidden border-b border-border/40 last:border-b-0 bg-card">
       <div className="absolute inset-y-0 right-0 flex md:hidden items-center justify-end w-[140px]" style={{ zIndex: 0 }}>
         <button 
           onClick={(e) => { e.preventDefault(); onEdit(); }} 
@@ -638,8 +657,8 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        style={{ transform: `translateX(${dragX}px) scale(${1 - Math.min(Math.abs(dragX) / 140, 1) * 0.10})`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-        className="relative z-10 flex items-center justify-between p-4 rounded-2xl bg-card border border-transparent group hover:bg-accent/40 md:py-3 cursor-grab active:cursor-grabbing w-full"
+        style={{ transform: `translateX(${dragX}px)`, transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
+        className="relative z-10 flex items-center justify-between p-4 bg-card group hover:bg-accent/40 md:py-3 cursor-grab active:cursor-grabbing w-full"
       >
         <div className="flex items-center gap-3 flex-1 min-w-0 pointer-events-none md:pointer-events-auto">
           <div
@@ -685,9 +704,19 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
               else if (mode === 'Debit Card') { colorClasses = "bg-orange-500/10 text-orange-500"; Icon = CreditCard; }
 
               return (
-                <div className={`flex items-center gap-1 mt-1.5 px-2.5 py-0.5 rounded-full ${colorClasses}`}>
-                  <Icon className="w-[10px] h-[10px]" />
-                  <span className="text-[9px] uppercase font-bold tracking-widest">{mode}</span>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap justify-end">
+                  {tx.isOffline && (
+                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-750/30">
+                      <CloudOff className="w-[10px] h-[10px]" />
+                      <span className="text-[9px] uppercase font-bold tracking-widest">Offline</span>
+                    </div>
+                  )}
+                  <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full ${colorClasses}`}>
+                    <Icon className="w-[10px] h-[10px]" />
+                    <span className="text-[9px] uppercase font-bold tracking-widest">
+                      {tx.subPaymentMode ? `${mode} (${tx.subPaymentMode})` : mode}
+                    </span>
+                  </div>
                 </div>
               );
             })()}

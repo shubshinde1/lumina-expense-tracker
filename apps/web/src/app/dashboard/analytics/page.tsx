@@ -150,16 +150,7 @@ export default function AnalyticsPage() {
     .sort((a,b) => b.amount - a.amount).slice(0, 5);
 
   return (
-    <div className="px-4 py-3 md:p-8 space-y-4 animate-in fade-in duration-500 pb-32 overflow-hidden max-w-7xl mx-auto">
-      <header className="flex items-center justify-between pt-1">
-        <div>
-          <h1 className="font-heading text-2xl font-bold  text-foreground">Analytics</h1>
-          <p className="text-xs text-muted-foreground  uppercase mt-0.5">Deep financial intelligence</p>
-        </div>
-        <div className="w-12 h-12 bg-card rounded-2xl flex items-center justify-center border border-border shadow-sm">
-          <PieChartIcon className="text-primary w-6 h-6" />
-        </div>
-      </header>
+    <div className="space-y-6 animate-in fade-in duration-500 overflow-hidden">
 
       {/* Time Filters Secondary Bar */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap pb-1">

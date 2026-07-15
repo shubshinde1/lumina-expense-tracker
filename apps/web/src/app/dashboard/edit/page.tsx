@@ -35,6 +35,7 @@ function EditContent() {
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
   const [paymentMode, setPaymentMode] = useState("UPI");
+  const [subPaymentMode, setSubPaymentMode] = useState("");
   const [locationObj, setLocationObj] = useState<{lat: number, lng: number, address: string} | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
 
@@ -97,6 +98,14 @@ function EditContent() {
     }
   });
 
+  const { data: paymentModes = [], isLoading: isLoadingPayModes } = useQuery<any[]>({
+    queryKey: ['paymentModes'],
+    queryFn: async () => {
+      const response = await api.get('/payment-modes');
+      return response.data || [];
+    }
+  });
+
   useEffect(() => {
     if (transaction) {
       setType(transaction.type);
@@ -106,6 +115,7 @@ function EditContent() {
       setCategoryId(transaction.category);
       setSubcategoryId(transaction.subcategory || "");
       setPaymentMode(transaction.paymentMode || "UPI");
+      setSubPaymentMode(transaction.subPaymentMode || "");
       setLocationObj(transaction.location || null);
     }
   }, [transaction]);
@@ -146,6 +156,7 @@ function EditContent() {
       subcategory: subcategoryId || undefined,
       location: locationObj || undefined,
       paymentMode,
+      subPaymentMode: subPaymentMode || undefined,
     });
   };
 
@@ -156,18 +167,14 @@ function EditContent() {
   }
 
   return (
-    <div className="p-6 md:p-12 space-y-8 animate-in slide-in-from-bottom duration-500 pb-32 max-w-3xl mx-auto">
-      <header className="flex items-center gap-4 pb-4">
+    <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+      <header className="flex items-center gap-4">
         <Link
           href="/dashboard/history"
-          className="w-12 h-12 bg-card rounded-2xl flex items-center justify-center border border-border shadow-sm hover:bg-accent transition-colors"
+          className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors"
         >
-          <ArrowLeft className="text-foreground w-6 h-6" />
+          <ArrowLeft className="text-foreground w-5 h-5" />
         </Link>
-        <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground">Edit Entry</h1>
-          <p className="text-sm text-muted-foreground tracking-wide">Update this transaction.</p>
-        </div>
       </header>
 
       <form onSubmit={handleSubmit} className="space-y-8">
@@ -205,10 +212,27 @@ function EditContent() {
                     key={c._id}
                     type="button"
                     onClick={() => setCategoryId(c._id)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all ${categoryId === c._id ? 'bg-accent border-primary/50' : 'bg-card/50 border-border hover:border-border'}`}
+                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+                      categoryId === c._id 
+                        ? 'bg-accent/40 shadow-sm' 
+                        : 'bg-card/30 border-border/80 hover:bg-card/50'
+                    }`}
+                    style={categoryId === c._id ? { borderColor: c.color, backgroundColor: `${c.color}15` } : {}}
                   >
-                    <span className="material-symbols-outlined mb-1" style={{ color: c.color }}>{c.icon}</span>
-                    <span className="text-[10px] truncate w-full text-center text-muted-foreground">{c.name}</span>
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300"
+                      style={{ 
+                        backgroundColor: categoryId === c._id ? `${c.color}22` : `${c.color}0d`,
+                      }}
+                    >
+                      <span 
+                        className="material-symbols-outlined text-lg transition-colors duration-200" 
+                        style={{ color: c.color }}
+                      >
+                        {c.icon}
+                      </span>
+                    </div>
+                    <span className="text-[10px] truncate w-full text-center text-muted-foreground font-semibold">{c.name}</span>
                   </button>
                 ))}
               </div>
@@ -256,22 +280,58 @@ function EditContent() {
           </div>
 
           {/* Payment Mode */}
-          <div className="group relative">
-            <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase">
+          <div className="group relative space-y-3">
+            <label className="block font-medium text-xs text-muted-foreground uppercase">
               Payment Mode
             </label>
-            <div className="flex flex-wrap gap-2">
-              {['Cash', 'UPI', 'Net Banking', 'Credit Card', 'Debit Card'].map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setPaymentMode(mode)}
-                  className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase transition-all ${paymentMode === mode ? 'bg-foreground text-background shadow-md' : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'}`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
+            {isLoadingPayModes ? (
+              <div className="h-10 flex items-center justify-center bg-card/50 rounded-xl"><Loader2 className="animate-spin text-muted-foreground w-4 h-4" /></div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {paymentModes.map((mode: any) => (
+                  <button
+                    key={mode._id}
+                    type="button"
+                    onClick={() => {
+                      setPaymentMode(mode.name);
+                      setSubPaymentMode("");
+                    }}
+                    className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                      paymentMode === mode.name 
+                        ? 'bg-foreground text-background shadow-sm' 
+                        : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'
+                    }`}
+                  >
+                    {mode.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Sub-Payment Mode Selector */}
+            {paymentModes.find((m: any) => m.name === paymentMode)?.subPaymentModes?.length > 0 && (
+              <div className="group relative pt-1 animate-in fade-in slide-in-from-top-4 duration-300">
+                <label className="block font-medium text-[10px] text-muted-foreground uppercase mb-2">
+                  Sub Payment Mode
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {paymentModes.find((m: any) => m.name === paymentMode)?.subPaymentModes.map((sub: any) => (
+                    <button
+                      key={sub._id}
+                      type="button"
+                      onClick={() => setSubPaymentMode(sub.name)}
+                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                        subPaymentMode === sub.name 
+                          ? 'bg-primary text-black shadow-sm' 
+                          : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'
+                      }`}
+                    >
+                      {sub.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="group relative pt-4 pb-2 border-t border-border mt-6">

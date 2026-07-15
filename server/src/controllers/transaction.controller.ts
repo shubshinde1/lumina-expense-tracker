@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/auth.middleware";
 import { Transaction } from "../models/Transaction";
 import { Category } from "../models/Category";
 import { Notification } from "../models/Notification";
+import { PaymentMode } from "../models/PaymentMode";
 
 export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
   try {
@@ -43,7 +44,7 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
 
 export const addTransaction = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, amount, description, date, category, subcategory, location, paymentMode } = req.body;
+    const { type, amount, description, date, category, subcategory, location, paymentMode, subPaymentMode } = req.body;
     const userId = req.user._id;
 
     const transaction = await Transaction.create({
@@ -56,6 +57,7 @@ export const addTransaction = async (req: AuthRequest, res: Response) => {
       subcategory,
       location,
       paymentMode: paymentMode || 'UPI',
+      subPaymentMode: subPaymentMode || undefined,
     });
 
     res.status(201).json(transaction);
@@ -160,10 +162,10 @@ export const getTransaction = async (req: AuthRequest, res: Response): Promise<v
 
 export const updateTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { type, amount, description, date, category, subcategory, location, paymentMode } = req.body;
+    const { type, amount, description, date, category, subcategory, location, paymentMode, subPaymentMode } = req.body;
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, user: req.user._id },
-      { type, amount, description, date, category, subcategory, location, paymentMode },
+      { type, amount, description, date, category, subcategory, location, paymentMode, subPaymentMode },
       { new: true }
     );
     if (!transaction) {
@@ -193,6 +195,7 @@ export interface ParsedResult {
   category: string;
   subcategory: string | null;
   paymentMode: string;
+  subPaymentMode?: string | null;
   parserUsed: string;
   geminiError?: string | null;
 }
@@ -200,6 +203,9 @@ export interface ParsedResult {
 export const parseTransactionTextHelper = async (text: string, userId: any): Promise<ParsedResult> => {
   let geminiError: string | null = null;
   const categories = await Category.find({
+    $or: [{ user: userId }, { isGlobal: true }]
+  });
+  const paymentModes = await PaymentMode.find({
     $or: [{ user: userId }, { isGlobal: true }]
   });
 
@@ -217,12 +223,25 @@ export const parseTransactionTextHelper = async (text: string, userId: any): Pro
         }))
       }));
 
+      const paymentModesPromptList = paymentModes.map(m => {
+        const subs = m.subPaymentModes
+          .filter((s: any) => !m.isGlobal || s.user?.toString() === userId.toString())
+          .map((s: any) => s.name);
+        return {
+          name: m.name,
+          subPaymentModes: subs
+        };
+      });
+
       const prompt = `You are an expert financial transaction parser. Parse the following input text (which could be a natural speech transcription or bank/UPI transaction SMS) into a structured JSON transaction object.
 
 CRITICAL: If the user states a mathematical addition (e.g., "1200 + 120" or "1200 rupees plus 120 rupees"), evaluate the math expression and set the "amount" field to the calculated final sum.
 
 Available categories in our database:
 ${JSON.stringify(categoriesPromptList, null, 2)}
+
+Available payment modes in our database:
+${JSON.stringify(paymentModesPromptList, null, 2)}
 
 Respond ONLY with a valid JSON object matching this schema:
 {
@@ -231,7 +250,8 @@ Respond ONLY with a valid JSON object matching this schema:
   "description": "Short description of the spend/income (e.g. Starbucks Coffee, Zomato Order, Salary)",
   "category": "String (choose the _id of the best matching category from the list above, default to a general category ID if none fits)",
   "subcategory": "String (choose the _id of the best matching subcategory from the chosen category's subcategories array, or null if none fits)",
-  "paymentMode": "Cash" | "UPI" | "Net Banking" | "Credit Card" | "Debit Card" (infer from context, default to "UPI")
+  "paymentMode": "String (choose the name of the best matching parent payment mode from the payment modes list above, default to 'UPI')",
+  "subPaymentMode": "String (choose the name of the best matching sub-payment mode from the chosen parent payment mode's subPaymentModes list, or null if none fits)"
 }
 
 Text to parse:
@@ -380,8 +400,9 @@ Text to parse:
     }
   }
 
-  // 5. Payment Mode
+  // 5. Payment Mode & Sub Payment Mode
   let paymentMode = "UPI";
+  let subPaymentMode = "";
   if (lowerText.includes("cash") || lowerText.includes("cod") || lowerText.includes("hand cash")) {
     paymentMode = "Cash";
   } else if (lowerText.includes("credit card") || lowerText.includes("cc") || lowerText.includes("creditcard")) {
@@ -394,6 +415,18 @@ Text to parse:
     paymentMode = "UPI";
   }
 
+  if (paymentMode === "UPI") {
+    if (lowerText.includes("phonepe") || lowerText.includes("phone pe")) subPaymentMode = "PhonePe";
+    else if (lowerText.includes("gpay") || lowerText.includes("google pay")) subPaymentMode = "GPay";
+    else if (lowerText.includes("paytm")) subPaymentMode = "Paytm";
+    else if (lowerText.includes("cred")) subPaymentMode = "Cred";
+  } else if (paymentMode === "Net Banking") {
+    if (lowerText.includes("hdfc")) subPaymentMode = "HDFC";
+    else if (lowerText.includes("sbi") || lowerText.includes("state bank")) subPaymentMode = "SBI";
+    else if (lowerText.includes("icici")) subPaymentMode = "ICICI";
+    else if (lowerText.includes("axis")) subPaymentMode = "Axis";
+  }
+
   return {
     type,
     amount,
@@ -401,6 +434,7 @@ Text to parse:
     category: matchedCategory ? matchedCategory._id.toString() : categories[0]?._id?.toString() || "",
     subcategory: matchedSubcategory,
     paymentMode,
+    subPaymentMode: subPaymentMode || undefined,
     parserUsed: "Local Rule-Based Parser",
     geminiError
   };
@@ -432,6 +466,12 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
     if (!smsText) {
       console.log(`[SMS-READER DEBUG] Failed: Missing smsText parameter.`);
       res.status(400).json({ message: "SMS text is required" });
+      return;
+    }
+
+    if (req.user.settings && (req.user.settings as any).smsParserActive === false) {
+      console.log(`[SMS-READER DEBUG] Blocked: SMS Parser is deactivated in User settings.`);
+      res.status(400).json({ message: "SMS parser is deactivated in settings" });
       return;
     }
 

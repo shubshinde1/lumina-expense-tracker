@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, PieChart, PlusCircle, LayoutList, Bell, ArrowDownRight, ArrowUpRight, X } from "lucide-react";
+import { Home, PieChart, PlusCircle, LayoutList, Bell, ArrowDownRight, ArrowUpRight, X, User, Mic } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
@@ -16,7 +16,7 @@ export default function BottomNav() {
   // Hold & Swipe detection logic
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [isHolding, setIsHolding] = useState(false);
-  const [dragSelection, setDragSelection] = useState<"expense" | "income" | null>(null);
+  const [dragSelection, setDragSelection] = useState<"expense" | "income" | "voice" | null>(null);
 
   // Background poll notifications
   const { data: notifications = [] } = useQuery<any[]>({
@@ -107,7 +107,7 @@ export default function BottomNav() {
     if (dy < -30) {
       if (dx < -30) setDragSelection("expense"); // Up-Left
       else if (dx > 30) setDragSelection("income"); // Up-Right
-      else setDragSelection(null);
+      else setDragSelection("voice"); // Up-Center
     } else {
       setDragSelection(null);
     }
@@ -119,6 +119,8 @@ export default function BottomNav() {
       router.push("/dashboard/add?type=expense");
     } else if (dragSelection === "income") {
       router.push("/dashboard/add?type=income");
+    } else if (dragSelection === "voice") {
+      router.push("/dashboard/add?voice=true");
     } else if (touchStart) {
       // If tapped without dragging far enough
       const touchEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
@@ -141,19 +143,38 @@ export default function BottomNav() {
         {/* Center Floating Action Button (FAB) with Drag & Drop System */}
         <li className="relative -top-6 group z-50">
           {/* Options Canvas */}
-          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 pb-2 flex items-center gap-6 transition-all duration-300 pointer-events-none translate-y-4 ${isHolding ? "opacity-100 translate-y-0" : "opacity-0 group-hover:opacity-100 group-hover:translate-y-0"} z-10`}>
-             <div className={`flex flex-col items-center gap-2 transition-transform ${dragSelection === 'expense' ? 'scale-125 -translate-y-2' : 'scale-100'}`}>
-               <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'expense' ? 'bg-red-500 shadow-red-500/50' : 'bg-destructive'}`}>
-                  <ArrowUpRight className="w-6 h-6 text-white" strokeWidth={3} />
+          <div className={`absolute bottom-full left-1/2 -translate-x-1/2 pb-3 flex items-center gap-4 transition-all duration-300 pointer-events-none translate-y-4 ${isHolding ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 group-hover:opacity-100 group-hover:translate-y-0 group-hover:pointer-events-auto"} z-10`}>
+             {/* Expense (Left) */}
+             <div 
+               onClick={() => router.push("/dashboard/add?type=expense")}
+               className={`flex flex-col items-center gap-1.5 transition-transform cursor-pointer ${dragSelection === 'expense' ? 'scale-115 -translate-y-1' : 'scale-100'}`}
+             >
+               <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'expense' ? 'bg-red-500 shadow-red-500/50' : 'bg-destructive'}`}>
+                  <ArrowUpRight className="w-5 h-5 text-white" strokeWidth={3} />
                </div>
-               <span className={`text-[10px] font-black uppercase tracking-wider bg-card/90 px-2.5 py-1 rounded backdrop-blur ${dragSelection === 'expense' ? 'text-red-500' : 'text-destructive/80'}`}>Expense</span>
+               <span className={`text-[9px] font-black uppercase tracking-wider bg-[#131315]/90 border border-zinc-800 px-2 py-0.5 rounded-lg backdrop-blur ${dragSelection === 'expense' ? 'text-red-500 border-red-550/30' : 'text-destructive/80'}`}>Expense</span>
              </div>
 
-             <div className={`flex flex-col items-center gap-2 transition-transform ${dragSelection === 'income' ? 'scale-125 -translate-y-2' : 'scale-100'}`}>
-               <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'income' ? 'bg-[#1fc46a] shadow-[#1fc46a]/50' : 'bg-primary'}`}>
-                  <ArrowDownRight className="w-6 h-6 text-black" strokeWidth={3} />
+             {/* Voice Dictation (Center) */}
+             <div 
+               onClick={() => router.push("/dashboard/add?voice=true")}
+               className={`flex flex-col items-center gap-1.5 transition-transform cursor-pointer ${dragSelection === 'voice' ? 'scale-115 -translate-y-1' : 'scale-100'}`}
+             >
+               <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'voice' ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-emerald-600'}`}>
+                  <Mic className="w-5 h-5 text-white animate-pulse" strokeWidth={2.5} />
                </div>
-               <span className={`text-[10px] font-black uppercase tracking-wider bg-card/90 px-2.5 py-1 rounded backdrop-blur ${dragSelection === 'income' ? 'text-[#1fc46a]' : 'text-primary/80'}`}>Income</span>
+               <span className={`text-[9px] font-black uppercase tracking-wider bg-[#131315]/90 border border-zinc-800 px-2 py-0.5 rounded-lg backdrop-blur ${dragSelection === 'voice' ? 'text-emerald-500 border-emerald-550/30' : 'text-emerald-500/80'}`}>Dictate</span>
+             </div>
+
+             {/* Income (Right) */}
+             <div 
+               onClick={() => router.push("/dashboard/add?type=income")}
+               className={`flex flex-col items-center gap-1.5 transition-transform cursor-pointer ${dragSelection === 'income' ? 'scale-115 -translate-y-1' : 'scale-100'}`}
+             >
+               <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'income' ? 'bg-[#1fc46a] shadow-[#1fc46a]/50' : 'bg-primary'}`}>
+                  <ArrowDownRight className="w-5 h-5 text-black" strokeWidth={3} />
+               </div>
+               <span className={`text-[9px] font-black uppercase tracking-wider bg-[#131315]/90 border border-zinc-800 px-2 py-0.5 rounded-lg backdrop-blur ${dragSelection === 'income' ? 'text-[#1fc46a] border-primary/30' : 'text-primary/80'}`}>Income</span>
              </div>
           </div>
 
@@ -177,7 +198,7 @@ export default function BottomNav() {
         </li>
 
         <NavItem href="/dashboard/history" icon={<LayoutList />} label="History" active={pathname.startsWith("/dashboard/history") || pathname.startsWith("/dashboard/edit")} />
-        <NavItem href="/dashboard/notifications" icon={<Bell />} label="Notifications" active={pathname.startsWith("/dashboard/notifications")} badgeCount={unreadCount} />
+        <NavItem href="/dashboard/settings" icon={<User />} label="Profile" active={pathname.startsWith("/dashboard/settings")} />
       </ul>
     </nav>
   );

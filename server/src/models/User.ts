@@ -10,7 +10,8 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     isSuspended: { type: Boolean, default: false },
     settings: {
-      autoOpenKeyboard: { type: Boolean, default: true }
+      autoOpenKeyboard: { type: Boolean, default: true },
+      smsParserActive: { type: Boolean, default: true }
     }
   },
   { timestamps: true }

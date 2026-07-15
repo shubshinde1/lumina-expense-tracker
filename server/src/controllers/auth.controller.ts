@@ -189,7 +189,7 @@ export const verifyAdminLoginOtp = async (req: Request, res: Response) => {
 };
 
 export const updateUserSettings = async (req: AuthRequest, res: Response) => {
-  const { autoOpenKeyboard } = req.body;
+  const { autoOpenKeyboard, smsParserActive } = req.body;
   try {
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -197,11 +197,15 @@ export const updateUserSettings = async (req: AuthRequest, res: Response) => {
     }
 
     if (!(user as any).settings) {
-      (user as any).settings = { autoOpenKeyboard: true };
+      (user as any).settings = { autoOpenKeyboard: true, smsParserActive: true };
     }
 
     if (autoOpenKeyboard !== undefined) {
       (user as any).settings.autoOpenKeyboard = autoOpenKeyboard;
+    }
+
+    if (smsParserActive !== undefined) {
+      (user as any).settings.smsParserActive = smsParserActive;
     }
 
     user.markModified("settings");

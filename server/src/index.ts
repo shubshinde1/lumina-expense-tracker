@@ -8,6 +8,7 @@ import transactionRoutes from "./routes/transaction.routes";
 import categoryRoutes from "./routes/category.routes";
 import adminRoutes from "./routes/admin.routes";
 import notificationRoutes from "./routes/notification.routes";
+import paymentModeRoutes from "./routes/paymentMode.routes";
 
 connectDB();
 
@@ -25,6 +26,7 @@ app.use("/api/transactions", transactionRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/payment-modes", paymentModeRoutes);
 
 const PORT = process.env.PORT || 5000;
 

@@ -1,7 +1,21 @@
 'use client';
 
 import { useThemeStore } from "@/stores/useThemeStore";
-import { Moon, Sun, Check, Circle, Square, Settings as SettingsIcon, LogOut, ChevronRight } from "lucide-react";
+import {
+  Moon,
+  Sun,
+  Check,
+  Circle,
+  Square,
+  Settings as SettingsIcon,
+  LogOut,
+  ChevronRight,
+  Keyboard,
+  MessageSquare,
+  User,
+  Sliders,
+  Landmark
+} from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -16,9 +30,9 @@ const COLORS = [
 ];
 
 const RADIUS = [
-  { name: 'Sharp', val: 0, icon: <Square /> },
-  { name: 'Soft', val: 0.5, icon: <Square /> },
-  { name: 'Round', val: 1.5, icon: <Circle /> },
+  { name: 'Sharp', val: 0, icon: <Square className="w-4 h-4" /> },
+  { name: 'Soft', val: 0.5, icon: <Square className="w-4 h-4 rounded-md" /> },
+  { name: 'Round', val: 1.5, icon: <Circle className="w-4 h-4" /> },
 ];
 
 export default function SettingsPage() {
@@ -28,11 +42,20 @@ export default function SettingsPage() {
 
   const [mounted, setMounted] = useState(false);
   const [autoOpenKeyboard, setAutoOpenKeyboard] = useState(user?.settings?.autoOpenKeyboard ?? true);
+  const [smsParserActive, setSmsParserActive] = useState(user?.settings?.smsParserActive ?? true);
   const [updatingSettings, setUpdatingSettings] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Sync state with store if user changes
+  useEffect(() => {
+    if (user?.settings) {
+      setAutoOpenKeyboard(user.settings.autoOpenKeyboard ?? true);
+      setSmsParserActive(user.settings.smsParserActive ?? true);
+    }
+  }, [user]);
 
   const handleToggleKeyboard = async (checked: boolean) => {
     setAutoOpenKeyboard(checked);
@@ -53,6 +76,25 @@ export default function SettingsPage() {
     }
   };
 
+  const handleToggleSmsParser = async (checked: boolean) => {
+    setSmsParserActive(checked);
+    setUpdatingSettings(true);
+    try {
+      const res = await api.put('/auth/settings', { smsParserActive: checked });
+      if (user) {
+        setUser({
+          ...user,
+          settings: res.data.settings
+        });
+      }
+    } catch (err) {
+      console.error("Failed to update user settings:", err);
+      setSmsParserActive(!checked);
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
   const handleLogout = () => {
     logout();
     router.push('/');
@@ -61,150 +103,266 @@ export default function SettingsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="p-6 md:p-12 space-y-8 animate-in fade-in duration-500 pb-32 max-w-4xl mx-auto">
+    <div className="space-y-6 animate-in fade-in duration-500 select-none">
 
-      <header className="flex items-center justify-between pb-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold  text-foreground">Settings</h1>
-          <p className="text-sm text-muted-foreground ">Customize your ledger.</p>
-        </div>
-        <div className="w-12 h-12 bg-card rounded-2xl flex items-center justify-center border border-border shadow-sm">
-          <SettingsIcon className="text-primary w-6 h-6" />
-        </div>
-      </header>
-
-      {/* Profile Card */}
-      <section className="glass-card w-full rounded-3xl p-6 bg-card/50 border border-border shadow-sm flex items-center gap-4">
-        <div className="w-16 h-16 rounded-full bg-primary/20 flex items-center justify-center border-2" style={{ borderColor: accentColor }}>
-          <span className="font-heading font-bold text-2xl" style={{ color: accentColor }}>{user?.name?.[0] || 'U'}</span>
-        </div>
-        <div>
-          <h3 className="font-bold text-foreground text-lg">{user?.name || 'User'}</h3>
-          <p className="text-sm text-muted-foreground">{user?.email}</p>
-          <span className="inline-block px-2 py-0.5 mt-2 text-[10px] uppercase  bg-accent rounded-full font-bold">
-            {user?.plan || 'Free'} Plan
+      {/* Profile Card (Top card) */}
+      <section className="bg-white dark:bg-[#1c1c1e] rounded-[28px] p-5 flex items-center gap-4 shadow-sm border border-zinc-200 dark:border-zinc-800/30">
+        <div
+          className="w-14 h-14 rounded-full bg-zinc-100 dark:bg-[#2c2c2e] flex items-center justify-center border-2 shadow-inner shrink-0"
+          style={{ borderColor: accentColor }}
+        >
+          <span className="font-heading font-black text-xl" style={{ color: accentColor }}>
+            {user?.name?.[0]?.toUpperCase() || 'U'}
           </span>
         </div>
-      </section>
-
-      {/* Appearance Settings */}
-      <section className="space-y-6">
-        <h3 className="font-heading text-lg font-bold text-foreground">Appearance</h3>
-
-        {/* Theme Toggle */}
-        <div className="space-y-3">
-          <p className="text-xs uppercase  text-muted-foreground font-bold">Theme Base</p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setTheme('dark')}
-              className={`flex items-center justify-center gap-2 p-4 rounded-[var(--radius)] border transition-all ${theme === 'dark' ? 'bg-accent border-primary' : 'bg-card/50 border-border'}`}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-black text-zinc-900 dark:text-white text-base tracking-tight truncate">{user?.name || 'User'}</h3>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{user?.email}</p>
+          <div className="mt-2.5">
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[9px] uppercase tracking-wider rounded-full font-black border"
+              style={{
+                color: accentColor,
+                borderColor: `${accentColor}30`,
+                backgroundColor: `${accentColor}10`
+              }}
             >
-              <Moon className="w-5 h-5 text-foreground" />
-              <span className="font-medium text-sm text-foreground">Dark</span>
-            </button>
-            <button
-              onClick={() => setTheme('light')}
-              className={`flex items-center justify-center gap-2 p-4 rounded-[var(--radius)] border transition-all ${theme === 'light' ? 'bg-accent border-primary' : 'bg-card/50 border-border'}`}
-            >
-              <Sun className="w-5 h-5 text-foreground" />
-              <span className="font-medium text-sm text-foreground">Light</span>
-            </button>
+              <User className="w-3 h-3" />
+              {user?.plan || 'Free'} Plan
+            </span>
           </div>
         </div>
-
-        {/* Accent Colors */}
-        <div className="space-y-3">
-          <p className="text-xs uppercase  text-muted-foreground font-bold">Accent Color</p>
-          <div className="flex flex-wrap gap-4">
-            {COLORS.map(c => (
-              <button
-                key={c.name}
-                onClick={() => setAccentColor(c.hex)}
-                className="w-12 h-12 rounded-full flex items-center justify-center transition-transform hover:scale-110 active:scale-95"
-                style={{ backgroundColor: c.hex }}
-              >
-                {accentColor === c.hex && <Check className="text-black w-6 h-6" strokeWidth={3} />}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Roundness */}
-        <div className="space-y-3">
-          <p className="text-xs uppercase  text-muted-foreground font-bold">Shape Geometry</p>
-          <div className="grid grid-cols-3 gap-3">
-            {RADIUS.map(r => (
-              <button
-                key={r.name}
-                onClick={() => setRadius(r.val)}
-                className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border transition-all ${radius === r.val ? 'bg-accent border-primary text-primary' : 'bg-card/50 border-border text-muted-foreground'}`}
-              >
-                {r.icon}
-                <span className="font-medium text-[10px] uppercase ">{r.name}</span>
-              </button>
-            ))}
-          </div>
-          </div>
       </section>
 
-      {/* Ledger Preferences */}
-      <section className="space-y-4 pt-4 border-t border-border">
-        <h3 className="font-heading text-lg font-bold text-foreground">Ledger Preferences</h3>
-        
-        <div className="flex items-center justify-between p-4 rounded-xl border border-border bg-card/50">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <SettingsIcon className="w-4 h-4 text-primary" />
+      {/* Section 1: Appearance */}
+      <div className="space-y-2">
+        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-4">Appearance</span>
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[28px] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800/30 divide-y divide-zinc-200 dark:divide-zinc-800/60 text-zinc-900 dark:text-white">
+
+          {/* Row 1: Theme Base */}
+          <div className="px-5 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-purple-500/10 text-purple-400 shrink-0">
+                {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Theme Base</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Choose Dark or Light base mode</p>
+              </div>
             </div>
-            <div className="text-left">
-              <p className="font-bold text-sm text-foreground">Auto-Open Keyboard</p>
-              <p className="text-[10px] text-muted-foreground uppercase mt-0.5">Open keypad automatically on Add Transaction</p>
+            <div className="flex bg-zinc-100 dark:bg-[#2c2c2e] p-0.5 rounded-xl border border-zinc-200 dark:border-zinc-700/30 shrink-0">
+              <button
+                onClick={() => setTheme('dark')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer ${theme === 'dark'
+                    ? 'bg-white dark:bg-[#3a3a3c] text-zinc-900 dark:text-white shadow-sm'
+                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650 dark:hover:text-zinc-350'
+                  }`}
+              >
+                Dark
+              </button>
+              <button
+                onClick={() => setTheme('light')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer ${theme === 'light'
+                    ? 'bg-white dark:bg-[#3a3a3c] text-zinc-900 dark:text-white shadow-sm'
+                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650 dark:hover:text-zinc-350'
+                  }`}
+              >
+                Light
+              </button>
             </div>
           </div>
-          <label className="relative inline-flex items-center cursor-pointer select-none">
-            <input 
-              type="checkbox" 
-              checked={autoOpenKeyboard} 
-              disabled={updatingSettings}
-              onChange={(e) => handleToggleKeyboard(e.target.checked)}
-              className="sr-only peer" 
+
+          {/* Row 2: Accent Color */}
+          <div className="px-5 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-teal-500/10 text-teal-400 shrink-0">
+                <Sliders className="w-4 h-4" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Accent Color</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Highlight color of application elements</p>
+              </div>
+            </div>
+            <div className="flex gap-2 items-center shrink-0">
+              {COLORS.map(c => (
+                <button
+                  key={c.name}
+                  onClick={() => setAccentColor(c.hex)}
+                  className="w-6 h-6 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-90 relative border border-black/40 cursor-pointer shadow-sm"
+                  style={{
+                    backgroundColor: c.hex,
+                    boxShadow: accentColor === c.hex ? `0 0 10px ${c.hex}40` : 'none'
+                  }}
+                >
+                  {accentColor === c.hex && <Check className="text-black w-3.5 h-3.5" strokeWidth={4} />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 3: Roundness */}
+          <div className="px-5 py-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-blue-500/10 text-blue-400 shrink-0">
+                <Circle className="w-4 h-4" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Roundness</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Roundness level of component edges</p>
+              </div>
+            </div>
+            <div className="flex bg-zinc-100 dark:bg-[#2c2c2e] p-0.5 rounded-xl border border-zinc-200 dark:border-zinc-700/30 shrink-0">
+              {RADIUS.map(r => (
+                <button
+                  key={r.name}
+                  onClick={() => setRadius(r.val)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${radius === r.val
+                      ? 'bg-white dark:bg-[#3a3a3c] text-zinc-900 dark:text-white shadow-sm'
+                      : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650 dark:hover:text-zinc-350'
+                    }`}
+                >
+                  {r.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Section 2: Ledger Preferences */}
+      <div className="space-y-2">
+        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-4">Ledger Preferences</span>
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[28px] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800/30 divide-y divide-zinc-200 dark:divide-zinc-800/60 text-zinc-900 dark:text-white">
+
+          {/* Row 1: Auto-Open Keyboard */}
+          <div className="px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/10 transition-colors duration-200">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-orange-500/10 text-orange-400 shrink-0">
+                <Keyboard className="w-4.5 h-4.5" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Auto-Open Keyboard</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Pop keypad up automatically on Add Transaction</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+              <input
+                type="checkbox"
+                checked={autoOpenKeyboard}
+                disabled={updatingSettings}
+                onChange={(e) => handleToggleKeyboard(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div
+                className="w-9 h-5 bg-zinc-200 dark:bg-zinc-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm"
+                style={{
+                  backgroundColor: autoOpenKeyboard ? accentColor : undefined,
+                }}
+              ></div>
+            </label>
+          </div>
+
+          {/* Row 2: SMS Transaction Parser */}
+          <div className="px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/10 transition-colors duration-200">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500/10 text-green-400 shrink-0">
+                <MessageSquare className="w-4.5 h-4.5" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">SMS Transaction Parser</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Log transactions from incoming banking SMS text alerts</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
+              <input
+                type="checkbox"
+                checked={smsParserActive}
+                disabled={updatingSettings}
+                onChange={(e) => handleToggleSmsParser(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div
+                className="w-9 h-5 bg-zinc-200 dark:bg-zinc-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all after:shadow-sm"
+                style={{
+                  backgroundColor: smsParserActive ? accentColor : undefined,
+                }}
+              ></div>
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Section 3: Application Configs */}
+      <div className="space-y-2">
+        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-4">Application Data</span>
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[28px] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800/30 text-zinc-900 dark:text-white">
+
+          {/* Row 1: Manage Configs */}
+          <button
+            onClick={() => router.push('/dashboard/categories')}
+            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-zinc-100 dark:hover:bg-[#2c2c2e] transition-colors duration-200 cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-pink-500/10 text-pink-400 shrink-0">
+                <SettingsIcon className="w-4.5 h-4.5" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Manage Configs</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Setup Categories & Subcategories</p>
+              </div>
+            </div>
+            <ChevronRight 
+              className="w-5 h-5 text-zinc-400 dark:text-zinc-600"
             />
-            <div className="w-9 h-5 bg-zinc-800 rounded-full peer peer-focus:ring-0 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-zinc-400 after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-checked:after:bg-black"></div>
-          </label>
+          </button>
+
+          {/* Row 2: Manage Payment Modes */}
+          <button
+            onClick={() => router.push('/dashboard/payment-modes')}
+            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-zinc-100 dark:hover:bg-[#2c2c2e] border-t border-zinc-200 dark:border-zinc-800/60 transition-colors duration-200 cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-cyan-500/10 text-cyan-400 shrink-0">
+                <Landmark className="w-4.5 h-4.5" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Payment Modes</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Setup UPI, Cards & Bank Accounts</p>
+              </div>
+            </div>
+            <ChevronRight 
+              className="w-5 h-5 text-zinc-400 dark:text-zinc-600"
+            />
+          </button>
+
         </div>
-      </section>
+      </div>
 
-      {/* Application Data */}
-      <section className="space-y-4 pt-4 border-t border-border">
-        <h3 className="font-heading text-lg font-bold text-foreground">Application Data</h3>
+      {/* Section 4: Session Control */}
+      <div className="space-y-2 pt-4">
+        <div className="bg-white dark:bg-[#1c1c1e] rounded-[28px] overflow-hidden shadow-sm border border-zinc-200 dark:border-zinc-800/30 text-zinc-900 dark:text-white">
 
-        <button
-          onClick={() => router.push('/dashboard/categories')}
-          className="w-full flex items-center justify-between p-4 rounded-xl border border-border bg-card/50 hover:bg-card transition-colors group"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
-              <SettingsIcon className="w-4 h-4 text-primary" />
+          {/* Row 1: End Session */}
+          <button
+            onClick={handleLogout}
+            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-red-500/5 transition-colors duration-200 cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-500/10 text-red-400 shrink-0">
+                <LogOut className="w-4 h-4" />
+              </div>
+              <div className="text-left min-w-0">
+                <p className="font-bold text-sm text-red-400">End Session</p>
+                <p className="text-[10px] text-red-400/60 uppercase mt-0.5 truncate">Log out from your current user account</p>
+              </div>
             </div>
-            <div className="text-left">
-              <p className="font-bold text-sm text-foreground">Manage Configs</p>
-              <p className="text-[10px] text-muted-foreground uppercase  mt-0.5">Categories & Subs</p>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
-        </button>
-      </section>
+            <ChevronRight className="w-5 h-5 text-red-400/40" />
+          </button>
 
-      {/* Danger Zone */}
-      <section className="pt-8 border-t border-border">
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-2 p-4 rounded-[var(--radius)] bg-destructive/10 text-destructive font-bold  active:scale-95 transition-all outline-none"
-        >
-          <LogOut className="w-5 h-5" />
-          End Session
-        </button>
-      </section>
+        </div>
+      </div>
 
     </div>
   );

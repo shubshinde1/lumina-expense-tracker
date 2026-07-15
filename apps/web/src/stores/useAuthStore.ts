@@ -8,6 +8,7 @@ interface User {
   role: string;
   settings?: {
     autoOpenKeyboard: boolean;
+    smsParserActive?: boolean;
   };
   token: string;
 }

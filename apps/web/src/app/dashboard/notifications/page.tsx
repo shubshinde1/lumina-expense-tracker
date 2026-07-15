@@ -501,14 +501,9 @@ export default function NotificationsPage() {
   if (!isMounted || !user) return null;
 
   return (
-    <div className="px-5 py-6 md:p-12 space-y-8 animate-in fade-in duration-500 pb-32 max-w-3xl mx-auto">
-      {/* Header */}
-      <header className="flex items-center justify-between pb-4 border-b border-border/40">
-        <div>
-          <h1 className="font-heading text-2xl md:text-3xl font-bold tracking-tight text-foreground">Notifications</h1>
-          <p className="text-xs text-muted-foreground mt-1">Manage system alerts, security updates, and auto-logged entries.</p>
-        </div>
-        {unreadCount > 0 && (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {unreadCount > 0 && (
+        <div className="flex justify-end">
           <button 
             onClick={() => markAllReadMutation.mutate()}
             disabled={markAllReadMutation.isPending}
@@ -517,8 +512,8 @@ export default function NotificationsPage() {
             <CheckCheck className="w-4 h-4" />
             Read All
           </button>
-        )}
-      </header>
+        </div>
+      )}
 
       {/* Content Body */}
       {isLoading ? (

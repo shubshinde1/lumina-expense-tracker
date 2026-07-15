@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Settings2, Loader2, ChevronDown, Edit3, X, Check } from "lucide-react";
+import { Plus, Trash2, Settings2, Loader2, ChevronDown, Edit3, X, Check, ArrowLeft, CloudOff } from "lucide-react";
 import api from "@/lib/api";
+import Link from "next/link";
 
 const ICONS_LIST = [
   "wallet", "account_balance", "payments", "credit_card", "receipt_long", "savings", "store",
@@ -119,17 +120,16 @@ export default function CategoriesPage() {
   if (isLoading) return <div className="flex justify-center flex-col items-center gap-4 min-h-screen pb-20"><Loader2 className="animate-spin text-primary w-8 h-8" /><p className="text-xs uppercase  text-muted-foreground font-bold">Loading configs...</p></div>;
 
   return (
-    <div className="p-6 md:p-12 space-y-8 animate-in fade-in zoom-in-95 duration-500 pb-32 max-w-4xl mx-auto">
-      
-      {/* Header */}
-      <header className="flex items-center justify-between pb-4">
-        <div>
-          <h1 className="font-heading text-2xl font-bold  text-foreground">Categories</h1>
-          <p className="text-sm text-muted-foreground  mt-1">Manage dictionary & sub-types.</p>
-        </div>
-        <div className="w-12 h-12 bg-card rounded-2xl flex items-center justify-center border border-border shadow-sm">
-          <Settings2 className="text-primary w-6 h-6" />
-        </div>
+    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
+
+      {/* Navigation Header */}
+      <header className="flex items-center gap-4">
+        <Link
+          href="/dashboard/settings"
+          className="w-10 h-10 bg-card border border-border/50 flex items-center justify-center rounded-xl shadow-sm hover:bg-accent transition-colors"
+        >
+          <ArrowLeft className="text-foreground w-5 h-5" />
+        </Link>
       </header>
 
       {/* Add Category VIP Form */}
@@ -306,125 +306,164 @@ export default function CategoriesPage() {
                 className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/40 transition-colors group" 
                 onClick={() => setExpanded(expanded === cat._id ? null : cat._id)}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
                   <div 
-                    className="w-12 h-12 rounded-[1rem] flex items-center justify-center border group-hover:scale-105 transition-transform shadow-sm" 
-                    style={{ backgroundColor: `${cat.color}15`, borderColor: `${cat.color}30`, color: cat.color }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-105 duration-300"
+                    style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
                   >
-                    <span className="material-symbols-outlined text-[22px]">{cat.icon}</span>
+                    <span className="material-symbols-outlined text-lg">{cat.icon}</span>
                   </div>
-                  <div>
-                    <h4 className="font-bold font-heading text-[15px]">{cat.name}</h4>
-                    <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground/80 mt-1">{cat.type}</p>
+                  <div className="text-left min-w-0">
+                    <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 flex-wrap">
+                      {cat.name}
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold ${
+                        cat.type === 'expense' 
+                          ? 'bg-red-500/10 text-red-400' 
+                          : 'bg-emerald-500/10 text-emerald-400'
+                      }`}>
+                        {cat.type}
+                      </span>
+                      {cat.isGlobal && (
+                        <span className="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
+                      )}
+                      {cat.isOffline && (
+                        <span className="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-zinc-750/30 flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                      )}
+                    </h4>
+                    <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
+                      {cat.subcategories?.length || 0} sub-categories configured
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 flex items-center justify-center bg-card rounded-full shadow-sm text-muted-foreground group-hover:bg-accent group-hover:text-foreground transition-all">
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded === cat._id ? "rotate-180" : "rotate-0"}`} />
+                  {!cat.isGlobal && editingCatId !== cat._id && (
+                    <>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditCat(cat);
+                          setDeleteConfirmId(null);
+                        }}
+                        className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(cat._id);
+                        }}
+                        className="p-2 hover:bg-red-500/10 text-red-400/80 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
+                  <div className="p-2 hover:bg-zinc-800 text-zinc-400 rounded-lg transition-colors">
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded === cat._id ? "rotate-180" : ""}`} />
                   </div>
                 </div>
               </div>
             )}
 
             {/* Subcategories (Expanded view) */}
-            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded === cat._id ? 'max-h-[800px] opacity-100 border-t border-border bg-accent/20' : 'max-h-0 opacity-0'}`}>
-              <div className="p-5 space-y-3">
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded === cat._id ? 'max-h-[800px] opacity-100 border-t border-border bg-zinc-900/40' : 'max-h-0 opacity-0'}`}>
+              <div className="p-4 space-y-4">
                 
-                <div className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-end gap-3 mb-4">
-                  <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-muted-foreground mt-1">Sub-categories</p>
-                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); openEditCat(cat); setDeleteConfirmId(null); }} 
-                      className="flex-1 sm:flex-none justify-center text-[10px] uppercase font-bold  text-primary hover:bg-primary/10 px-3 py-2 sm:py-1.5 rounded transition-colors flex items-center gap-1.5 bg-primary/5 sm:bg-transparent"
-                    >
-                       <Edit3 className="w-3 h-3"/> Edit Parent
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(cat._id); }} 
-                      className="flex-1 sm:flex-none justify-center text-[10px] uppercase font-bold  text-destructive hover:bg-destructive/10 px-3 py-2 sm:py-1.5 rounded transition-colors flex items-center gap-1.5 bg-destructive/5 sm:bg-transparent"
-                    >
-                       <Trash2 className="w-3 h-3"/> Delete Parent
-                    </button>
-                  </div>
-                </div>
-
-                {cat.subcategories?.map((sub: any) => (
-                  <div key={sub._id} className="min-h-[48px] flex items-center justify-between bg-card rounded-xl px-4 py-2 border border-border/50 shadow-sm hover:border-border transition-colors group/sub">
-                    
-                    {editingSubId === sub._id ? (
-                      <div className="flex flex-1 items-center gap-3 w-full">
-                        <input
-                          type="text"
-                          value={editSubName}
-                          onChange={(e) => setEditSubName(e.target.value)}
-                          className="flex-1 bg-accent/50 border border-primary/50 rounded-lg px-3 py-1.5 outline-none text-sm focus:border-primary font-medium shadow-sm h-[36px]"
-                          autoFocus
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && editSubName) {
-                              updateSubMutation.mutate({ catId: cat._id, subId: sub._id, name: editSubName });
-                            }
-                          }}
-                        />
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => editSubName && updateSubMutation.mutate({ catId: cat._id, subId: sub._id, name: editSubName })}
-                            className="bg-primary/20 text-primary w-9 h-9 rounded-lg flex flex-col items-center justify-center hover:bg-primary hover:text-[#003417] transition-colors"
-                          >
-                            <Check className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setEditingSubId(null)}
-                            className="bg-muted text-muted-foreground w-9 h-9 flex flex-col items-center justify-center rounded-lg hover:bg-foreground hover:text-background transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <span className="text-sm font-semibold">{sub.name}</span>
-                        <div className="flex items-center gap-1 opacity-100 sm:opacity-0 group-hover/sub:opacity-100 transition-opacity">
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setEditingSubId(sub._id); setEditSubName(sub.name); }} 
-                            className="text-muted-foreground/50 hover:text-primary hover:bg-primary/10 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); deleteSubMutation.mutate({ catId: cat._id, subId: sub._id }); }} 
-                            className="text-muted-foreground/30 hover:text-destructive hover:bg-destructive/10 w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
-
+                {/* Create Sub-Category Row */}
                 <form 
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if(subName) addSubMutation.mutate({ id: cat._id, name: subName });
+                    if(subName.trim()) {
+                      addSubMutation.mutate({ id: cat._id, name: subName.trim() });
+                    }
                   }} 
-                  className="flex items-center gap-3 mt-4"
+                  className="flex gap-2"
                 >
                   <input
                     type="text"
-                    placeholder={`New ${cat.name} type...`}
+                    placeholder={`Add sub-category under ${cat.name}...`}
                     value={subName}
                     onChange={(e) => setSubName(e.target.value)}
-                    className="flex-1 bg-card border border-border rounded-xl px-4 py-3 outline-none text-sm focus:border-primary transition-colors focus:ring-1 focus:ring-primary shadow-sm"
+                    className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none w-full"
                   />
                   <button
                     type="submit"
-                    disabled={!subName || addSubMutation.isPending}
-                    className="h-[46px] px-6 rounded-xl bg-accent hover:bg-primary border border-border hover:border-primary/50 text-muted-foreground hover:text-black font-bold text-xs disabled:opacity-50 transition-all shadow-sm active:scale-95"
+                    disabled={!subName.trim() || addSubMutation.isPending}
+                    className="bg-zinc-800 hover:bg-zinc-750 text-white px-3.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                   >
                     Add
                   </button>
                 </form>
+
+                {/* Sub-categories List */}
+                <div className="space-y-1.5">
+                  {cat.subcategories?.length === 0 ? (
+                    <p className="text-[10px] text-zinc-600 uppercase text-center py-2">No sub-categories configured yet</p>
+                  ) : (
+                    cat.subcategories.map((sub: any) => (
+                      <div 
+                        key={sub._id} 
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800/30"
+                      >
+                        {editingSubId === sub._id ? (
+                          <div className="flex items-center gap-1.5 flex-1">
+                            <input
+                              type="text"
+                              value={editSubName}
+                              onChange={(e) => setEditSubName(e.target.value)}
+                              className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs focus:outline-none w-full"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => editSubName.trim() && updateSubMutation.mutate({ catId: cat._id, subId: sub._id, name: editSubName.trim() })}
+                              className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg"
+                            >
+                              <Check className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => setEditingSubId(null)}
+                              className="p-1.5 bg-zinc-800 text-zinc-400 rounded-lg"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="text-xs text-zinc-300 font-bold flex items-center gap-1.5">
+                              {sub.name}
+                              {sub.isOffline && (
+                                <span className="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-zinc-750/30 flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                              )}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingSubId(sub._id);
+                                  setEditSubName(sub.name);
+                                }}
+                                className="p-1.5 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteSubMutation.mutate({ catId: cat._id, subId: sub._id });
+                                }}
+                                className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
 
               </div>
             </div>

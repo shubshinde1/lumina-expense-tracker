@@ -50,12 +50,22 @@ const originalPut = api.put;
 const originalDelete = api.delete;
 
 api.get = async function(url: string, config?: any) {
+  const isSingleTxFetch = url.match(/^\/transactions\/([a-f0-9]{24}|temp_\d+)$/i);
+
   if (typeof window !== 'undefined' && !navigator.onLine) {
     const key = getCacheKey(url);
     if (key) {
       const cached = localStorage.getItem(key);
       if (cached) {
-        return { data: JSON.parse(cached), status: 200, statusText: 'OK', headers: {}, config: {} as any };
+        let parsed = JSON.parse(cached);
+        if (isSingleTxFetch && Array.isArray(parsed)) {
+          const txId = isSingleTxFetch[1];
+          const singleTx = parsed.find((tx: any) => tx._id === txId);
+          if (singleTx) {
+            return { data: singleTx, status: 200, statusText: 'OK', headers: {}, config: {} as any };
+          }
+        }
+        return { data: parsed, status: 200, statusText: 'OK', headers: {}, config: {} as any };
       }
     }
   }
@@ -64,7 +74,13 @@ api.get = async function(url: string, config?: any) {
     const res: any = await originalGet.call(api, url, config);
     if (typeof window !== 'undefined') {
       const key = getCacheKey(url);
-      if (key && res.data) {
+      const isIndexEndpoint = url === '/transactions' || 
+                              url.startsWith('/transactions?') ||
+                              url === '/categories' || 
+                              url === '/payment-modes' || 
+                              url === '/transactions/summary';
+
+      if (key && res.data && isIndexEndpoint) {
         localStorage.setItem(key, JSON.stringify(res.data));
       }
     }
@@ -75,7 +91,15 @@ api.get = async function(url: string, config?: any) {
       if (key) {
         const cached = localStorage.getItem(key);
         if (cached) {
-          return { data: JSON.parse(cached), status: 200, statusText: 'OK', headers: {}, config: {} as any };
+          let parsed = JSON.parse(cached);
+          if (isSingleTxFetch && Array.isArray(parsed)) {
+            const txId = isSingleTxFetch[1];
+            const singleTx = parsed.find((tx: any) => tx._id === txId);
+            if (singleTx) {
+              return { data: singleTx, status: 200, statusText: 'OK', headers: {}, config: {} as any };
+            }
+          }
+          return { data: parsed, status: 200, statusText: 'OK', headers: {}, config: {} as any };
         }
       }
     }

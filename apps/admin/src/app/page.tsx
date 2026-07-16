@@ -6,7 +6,7 @@ import { Eye, EyeOff, Lock, Mail, Key, ArrowLeft, RefreshCw } from "lucide-react
 export default function AdminLogin() {
   const router = useRouter();
   const [mode, setMode] = useState<'login' | 'forgot' | 'reset' | 'login_otp'>('login');
-  
+
   // Login/Global states
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -156,11 +156,11 @@ export default function AdminLogin() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-black text-white px-4">
       <div className="w-full max-w-sm p-8 rounded-lg bg-[#131315] border border-[#48474a] shadow-2xl animate-in fade-in duration-300">
-        
+
         {/* LOGIN MODE */}
         {mode === 'login' && (
           <>
-            <h1 className="text-2xl font-bold text-[#6bfe9c] mb-2 text-center">Lumina Admin Config</h1>
+            <h1 className="text-2xl font-bold text-[#6bfe9c] mb-2 text-center">Wealthy Admin Config</h1>
             <p className="text-[10px] uppercase text-zinc-500 font-bold tracking-widest text-center mb-6">Authenticate Credentials</p>
 
             {error && (
@@ -300,7 +300,7 @@ export default function AdminLogin() {
             >
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Login
             </button>
-            
+
             <h1 className="text-2xl font-bold text-[#6bfe9c] mb-2 text-center">Forgot Password</h1>
             <p className="text-[10px] uppercase text-zinc-500 font-bold tracking-widest text-center mb-6">Request Verification Code</p>
 

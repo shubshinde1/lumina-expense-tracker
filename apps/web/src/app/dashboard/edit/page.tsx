@@ -203,59 +203,91 @@ function EditContent() {
         <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-6 shadow-xl">
           <div className="group relative">
             <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase">Category</label>
+
             {isLoadingCats ? (
               <div className="h-14 flex items-center justify-center bg-accent rounded-xl"><Loader2 className="animate-spin text-muted-foreground" /></div>
             ) : (
-              <div className="grid grid-cols-4 gap-3">
-                {filteredCategories.map((c: any) => (
-                  <button
-                    key={c._id}
-                    type="button"
-                    onClick={() => setCategoryId(c._id)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
-                      categoryId === c._id 
-                        ? 'bg-accent/40 shadow-sm' 
-                        : 'bg-card/30 border-border/80 hover:bg-card/50'
-                    }`}
-                    style={categoryId === c._id ? { borderColor: c.color, backgroundColor: `${c.color}15` } : {}}
-                  >
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300"
-                      style={{ 
-                        backgroundColor: categoryId === c._id ? `${c.color}22` : `${c.color}0d`,
-                      }}
-                    >
-                      <span 
-                        className="material-symbols-outlined text-lg transition-colors duration-200" 
-                        style={{ color: c.color }}
-                      >
-                        {c.icon}
-                      </span>
-                    </div>
-                    <span className="text-[10px] truncate w-full text-center text-muted-foreground font-semibold">{c.name}</span>
-                  </button>
-                ))}
+              <div className="space-y-4">
+                {(() => {
+                  const chunks = [];
+                  const cats = filteredCategories || [];
+                  for (let i = 0; i < cats.length; i += 4) {
+                    chunks.push(cats.slice(i, i + 4));
+                  }
+                  
+                  return chunks.map((chunk, chunkIdx) => {
+                    const activeCat = chunk.find((c: any) => c._id === categoryId);
+                    const activeCatIdx = chunk.findIndex((c: any) => c._id === categoryId);
+                    const pointerLefts = ["left-[12.5%]", "left-[37.5%]", "left-[62.5%]", "left-[87.5%]"];
+                    const leftClass = activeCatIdx !== -1 ? pointerLefts[activeCatIdx] : "";
+                    
+                    return (
+                      <div key={chunkIdx} className="space-y-3.5">
+                        <div className="grid grid-cols-4 gap-3">
+                          {chunk.map((c: any) => (
+                            <button
+                              key={c._id}
+                              type="button"
+                              onClick={() => setCategoryId(c._id)}
+                              className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all ${
+                                categoryId === c._id 
+                                  ? 'bg-accent/40 shadow-sm' 
+                                  : 'bg-card/30 border-border/80 hover:bg-card/50'
+                              }`}
+                              style={categoryId === c._id ? { borderColor: c.color, backgroundColor: `${c.color}15` } : {}}
+                            >
+                              <div 
+                                className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300"
+                                style={{ 
+                                  backgroundColor: categoryId === c._id ? `${c.color}22` : `${c.color}0d`,
+                                }}
+                              >
+                                <span 
+                                  className="material-symbols-outlined text-lg transition-colors duration-200" 
+                                  style={{ color: c.color }}
+                                >
+                                  {c.icon}
+                                </span>
+                              </div>
+                              <span className="text-[10px] truncate w-full text-center text-muted-foreground font-semibold">{c.name}</span>
+                            </button>
+                          ))}
+                        </div>
+
+                        {activeCat && activeCat.subcategories?.length > 0 && (
+                          <div className="relative bg-muted border border-border rounded-[20px] p-4 animate-in fade-in slide-in-from-top-2 duration-300 space-y-2.5 mt-2">
+                            {/* Triangle pointing to selected category */}
+                            <div 
+                              className={`absolute top-0 -translate-y-[6.5px] -translate-x-1/2 w-3 h-3 rotate-45 border-t border-l border-border bg-muted ${leftClass}`}
+                            />
+                            <label className="block font-medium text-[10px] text-muted-foreground uppercase tracking-widest">
+                              Sub-Category
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {activeCat.subcategories.map((sub: any) => (
+                                <button
+                                  key={sub._id}
+                                  type="button"
+                                  onClick={() => setSubcategoryId(sub._id)}
+                                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                                    subcategoryId === sub._id 
+                                      ? 'bg-primary text-black border-primary' 
+                                      : 'bg-background dark:bg-zinc-800/60 text-muted-foreground hover:text-foreground border-border/40'
+                                  }`}
+                                >
+                                  {sub.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             )}
           </div>
-
-          {filteredCategories.find((c: any) => c._id === categoryId)?.subcategories?.length > 0 && (
-            <div className="group relative animate-in fade-in slide-in-from-top-4 duration-300">
-              <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase">Sub-Category</label>
-              <div className="flex flex-wrap gap-2">
-                {filteredCategories.find((c: any) => c._id === categoryId)?.subcategories?.map((sub: any) => (
-                  <button
-                    key={sub._id}
-                    type="button"
-                    onClick={() => setSubcategoryId(sub._id)}
-                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${subcategoryId === sub._id ? 'bg-primary text-black' : 'bg-accent text-muted-foreground hover:text-foreground'}`}
-                  >
-                    {sub.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
           <div className="group relative">
             <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase">Description (Optional)</label>

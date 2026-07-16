@@ -91,6 +91,17 @@ export default function BottomNav() {
     }
   }, [notifications, router, queryClient]);
 
+  // Prefetch dynamic and static routes on mount for offline readiness
+  useEffect(() => {
+    router.prefetch("/dashboard/add");
+    router.prefetch("/dashboard/edit");
+    router.prefetch("/dashboard/analytics");
+    router.prefetch("/dashboard/history");
+    router.prefetch("/dashboard/categories");
+    router.prefetch("/dashboard/payment-modes");
+    router.prefetch("/dashboard/settings");
+  }, [router]);
+
   const handleTouchStart = (e: React.TouchEvent) => {
     setTouchStart({ x: e.touches[0].clientX, y: e.touches[0].clientY });
     setIsHolding(true);

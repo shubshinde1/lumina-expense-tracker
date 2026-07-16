@@ -36,7 +36,7 @@ export default function DiagnosticsPage() {
   return (
     <div className="min-h-screen bg-black text-white p-8 font-mono">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-[#6bfe9c] mb-2">Lumina Auth Diagnostics</h1>
+        <h1 className="text-3xl font-bold text-[#6bfe9c] mb-2">Wealthy Auth Diagnostics</h1>
         <p className="text-zinc-500 mb-8">Troubleshooting raw server output from Render API</p>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">

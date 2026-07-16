@@ -146,7 +146,7 @@ export default function PaymentModesPage() {
           {paymentModes.map((mode: any) => (
             <div 
               key={mode._id} 
-              className="bg-[#1c1c1e] rounded-[24px] overflow-hidden border border-zinc-800/40 shadow-sm transition-all"
+              className="bg-card rounded-[24px] overflow-hidden border border-border shadow-sm transition-all"
             >
               
               {/* Parent Payment Mode Header Bar */}
@@ -171,23 +171,23 @@ export default function PaymentModesPage() {
                       </button>
                       <button
                         onClick={() => setEditingModeId(null)}
-                        className="p-1.5 bg-zinc-800 text-zinc-400 rounded-lg"
+                        className="p-1.5 bg-muted text-muted-foreground rounded-lg"
                       >
                         <X className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   ) : (
                     <div className="text-left">
-                      <h4 className="font-bold text-sm text-white flex items-center gap-1.5 flex-wrap">
+                      <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 flex-wrap">
                         {mode.name}
                         {mode.isGlobal && (
-                          <span className="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
+                          <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
                         )}
                         {mode.isOffline && (
-                          <span className="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-zinc-750/30 flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                          <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
                         )}
                       </h4>
-                      <p className="text-[10px] text-zinc-500 uppercase mt-0.5">
+                      <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
                         {mode.subPaymentModes?.length || 0} sub-modes configured
                       </p>
                     </div>
@@ -203,7 +203,7 @@ export default function PaymentModesPage() {
                           setEditingModeId(mode._id);
                           setEditModeName(mode.name);
                         }}
-                        className="p-2 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-lg transition-colors cursor-pointer"
+                        className="p-2 hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -217,7 +217,7 @@ export default function PaymentModesPage() {
                   )}
                   <button
                     onClick={() => setExpanded(expanded === mode._id ? null : mode._id)}
-                    className={`p-2 hover:bg-zinc-800 text-zinc-400 rounded-lg transition-transform duration-300 cursor-pointer ${
+                    className={`p-2 hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg transition-transform duration-300 cursor-pointer ${
                       expanded === mode._id ? "rotate-180" : ""
                     }`}
                   >
@@ -228,7 +228,7 @@ export default function PaymentModesPage() {
 
               {/* Sub-Payment Modes Nested Panel */}
               {expanded === mode._id && (
-                <div className="px-4 pb-4 pt-2 bg-zinc-900/40 border-t border-zinc-800/40 space-y-4">
+                <div className="px-4 pb-4 pt-2 bg-muted/40 border-t border-border space-y-4">
                   
                   {/* Create Sub-Payment Mode Row */}
                   <div className="flex gap-2">
@@ -237,12 +237,12 @@ export default function PaymentModesPage() {
                       placeholder={`Add sub-mode under ${mode.name}...`}
                       value={subName}
                       onChange={(e) => setSubName(e.target.value)}
-                      className="flex-1 bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none w-full"
+                      className="flex-1 bg-background border border-border rounded-xl px-3 py-2 text-xs focus:outline-none w-full"
                     />
                     <button
                       onClick={() => handleAddSub(mode._id)}
                       disabled={addSubMutation.isPending}
-                      className="bg-zinc-800 hover:bg-zinc-750 text-white px-3.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer"
+                      className="bg-secondary hover:bg-secondary/80 text-foreground px-3.5 rounded-xl text-xs font-bold transition-all active:scale-95 cursor-pointer border border-border"
                     >
                       Add
                     </button>
@@ -251,12 +251,12 @@ export default function PaymentModesPage() {
                   {/* Sub-Payment Modes list */}
                   <div className="space-y-1.5">
                     {mode.subPaymentModes?.length === 0 ? (
-                      <p className="text-[10px] text-zinc-600 uppercase text-center py-2">No sub-modes configured yet</p>
+                      <p className="text-[10px] text-muted-foreground uppercase text-center py-2">No sub-modes configured yet</p>
                     ) : (
                       mode.subPaymentModes.map((sub: any) => (
                         <div 
                           key={sub._id} 
-                          className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900 border border-zinc-800/30"
+                          className="flex items-center justify-between p-2.5 rounded-xl bg-background border border-border"
                         >
                           {editingSubId === sub._id ? (
                             <div className="flex items-center gap-1.5 flex-1">
@@ -264,7 +264,7 @@ export default function PaymentModesPage() {
                                 type="text"
                                 value={editSubName}
                                 onChange={(e) => setEditSubName(e.target.value)}
-                                className="bg-zinc-950 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs focus:outline-none w-full"
+                                className="bg-background border border-border rounded-lg px-2.5 py-1 text-xs focus:outline-none w-full"
                               />
                               <button
                                 onClick={() => updateSubMutation.mutate({ modeId: mode._id, subId: sub._id, name: editSubName })}
@@ -274,17 +274,17 @@ export default function PaymentModesPage() {
                               </button>
                               <button
                                 onClick={() => setEditingSubId(null)}
-                                className="p-1 bg-zinc-800 text-zinc-400 rounded-lg"
+                                className="p-1 bg-muted text-muted-foreground rounded-lg"
                               >
                                 <X className="w-3 h-3" />
                               </button>
                             </div>
                           ) : (
                             <>
-                              <span className="text-xs text-zinc-300 font-bold flex items-center gap-1.5">
+                              <span className="text-xs text-foreground font-bold flex items-center gap-1.5">
                               {sub.name}
                               {sub.isOffline && (
-                                <span className="text-[8px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-zinc-750/30 flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                                <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
                               )}
                             </span>
                               <div className="flex items-center gap-1.5">
@@ -293,13 +293,13 @@ export default function PaymentModesPage() {
                                     setEditingSubId(sub._id);
                                     setEditSubName(sub.name);
                                   }}
-                                  className="p-1.5 text-zinc-500 hover:text-white transition-colors cursor-pointer"
+                                  className="p-1.5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                                 >
                                   <Edit3 className="w-3 h-3" />
                                 </button>
                                 <button
                                   onClick={() => deleteSubMutation.mutate({ modeId: mode._id, subId: sub._id })}
-                                  className="p-1.5 text-zinc-500 hover:text-red-400 transition-colors cursor-pointer"
+                                  className="p-1.5 text-muted-foreground hover:text-red-400 transition-colors cursor-pointer"
                                 >
                                   <Trash2 className="w-3 h-3" />
                                 </button>

@@ -1,15 +1,15 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import { apiFetch } from "@/lib/api";
-import { 
-  ReceiptText, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  ArrowUpDown, 
-  ArrowUp, 
-  ArrowDown, 
-  ChevronLeft, 
-  ChevronRight, 
+import {
+  ReceiptText,
+  ArrowUpRight,
+  ArrowDownLeft,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  ChevronLeft,
+  ChevronRight,
   XCircle,
   RefreshCw,
   Download
@@ -20,7 +20,7 @@ export default function TransactionsPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
-  
+
   // Filter and pagination state
   const [selectedUser, setSelectedUser] = useState("");
   const [userSearch, setUserSearch] = useState("");
@@ -34,7 +34,7 @@ export default function TransactionsPage() {
   const [limit, setLimit] = useState(10);
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("desc");
-  
+
   const [total, setTotal] = useState(0);
   const [pages, setPages] = useState(1);
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
@@ -207,7 +207,7 @@ export default function TransactionsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `transactions_export_${new Date().toISOString().slice(0,10)}.csv`);
+    link.setAttribute("download", `transactions_export_${new Date().toISOString().slice(0, 10)}.csv`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -256,7 +256,7 @@ export default function TransactionsPage() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `transactions_export_${new Date().toISOString().slice(0,10)}.xls`);
+    link.setAttribute("download", `transactions_export_${new Date().toISOString().slice(0, 10)}.xls`);
     link.style.visibility = "hidden";
     document.body.appendChild(link);
     link.click();
@@ -283,7 +283,7 @@ export default function TransactionsPage() {
           <h1 className="text-2xl font-bold text-white flex items-center gap-2.5">
             Global History <ReceiptText className="w-5.5 h-5.5 text-[#6bfe9c]" />
           </h1>
-          <p className="text-zinc-400 text-xs mt-0.5">Every transaction recorded across the Lumina platform.</p>
+          <p className="text-zinc-400 text-xs mt-0.5">Every transaction recorded across the Wealthy platform.</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -343,19 +343,19 @@ export default function TransactionsPage() {
           </div>
 
           <div className="flex items-center gap-2 bg-[#1f1f22] p-1 rounded-lg border border-[#48474a]">
-            <button 
+            <button
               onClick={() => handleFilterChange(() => setType("all"))}
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${type === 'all' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-400 hover:text-white'}`}
             >
               All
             </button>
-            <button 
+            <button
               onClick={() => handleFilterChange(() => setType("income"))}
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${type === 'income' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-400 hover:text-white'}`}
             >
               Income
             </button>
-            <button 
+            <button
               onClick={() => handleFilterChange(() => setType("expense"))}
               className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${type === 'expense' ? 'bg-[#6bfe9c] text-[#004a23]' : 'text-zinc-400 hover:text-white'}`}
             >
@@ -411,7 +411,7 @@ export default function TransactionsPage() {
           {isDropdownOpen && (
             <div className="absolute z-50 w-full mt-2 bg-[#131315] border border-[#48474a] rounded-lg shadow-2xl overflow-hidden max-h-60 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
               {(() => {
-                const filteredUsers = users.filter(u => 
+                const filteredUsers = users.filter(u =>
                   u.name.toLowerCase().includes(userSearch.toLowerCase()) ||
                   u.email.toLowerCase().includes(userSearch.toLowerCase())
                 );
@@ -428,9 +428,8 @@ export default function TransactionsPage() {
                           handleFilterChange(() => setSelectedUser(""));
                           setIsDropdownOpen(false);
                         }}
-                        className={`w-full text-left px-4 py-3 text-xs transition-colors hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] border-b border-[#48474a]/20 cursor-pointer ${
-                          !selectedUser ? "bg-[#6bfe9c]/10 text-[#6bfe9c] font-bold" : "text-zinc-400"
-                        }`}
+                        className={`w-full text-left px-4 py-3 text-xs transition-colors hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] border-b border-[#48474a]/20 cursor-pointer ${!selectedUser ? "bg-[#6bfe9c]/10 text-[#6bfe9c] font-bold" : "text-zinc-400"
+                          }`}
                       >
                         All Users
                       </button>
@@ -446,9 +445,8 @@ export default function TransactionsPage() {
                             handleFilterChange(() => setSelectedUser(u._id));
                             setIsDropdownOpen(false);
                           }}
-                          className={`w-full text-left px-4 py-3 text-xs transition-colors hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] border-b border-[#48474a]/20 flex flex-col gap-0.5 cursor-pointer ${
-                            isSelected ? "bg-[#6bfe9c]/10 text-[#6bfe9c] font-bold" : "text-zinc-400"
-                          }`}
+                          className={`w-full text-left px-4 py-3 text-xs transition-colors hover:bg-[#6bfe9c]/10 hover:text-[#6bfe9c] border-b border-[#48474a]/20 flex flex-col gap-0.5 cursor-pointer ${isSelected ? "bg-[#6bfe9c]/10 text-[#6bfe9c] font-bold" : "text-zinc-400"
+                            }`}
                         >
                           <span className={`${isSelected ? "text-[#6bfe9c]" : "text-white"}`}>{u.name}</span>
                           <span className="text-[10px] text-zinc-500">{u.email}</span>
@@ -513,7 +511,7 @@ export default function TransactionsPage() {
                     <th className="px-4 py-2 font-bold">User</th>
                     <th className="px-4 py-2 font-bold">Category</th>
                     <th className="px-4 py-2 font-bold">Description</th>
-                    <th 
+                    <th
                       className="px-4 py-2 font-bold cursor-pointer hover:text-white transition-colors"
                       onClick={() => handleSort("date")}
                     >
@@ -526,7 +524,7 @@ export default function TransactionsPage() {
                         )}
                       </div>
                     </th>
-                    <th 
+                    <th
                       className="px-4 py-2 font-bold cursor-pointer hover:text-white transition-colors text-right"
                       onClick={() => handleSort("amount")}
                     >
@@ -615,11 +613,10 @@ export default function TransactionsPage() {
                     <button
                       key={p}
                       onClick={() => setPage(p as number)}
-                      className={`w-10 h-10 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                        page === p
+                      className={`w-10 h-10 rounded-lg font-bold text-xs transition-all cursor-pointer ${page === p
                           ? "bg-[#6bfe9c] text-[#004a23] shadow-md shadow-[#6bfe9c]/10"
                           : "bg-[#1f1f22] border border-[#48474a] text-zinc-400 hover:text-white hover:bg-zinc-800"
-                      }`}
+                        }`}
                     >
                       {p}
                     </button>

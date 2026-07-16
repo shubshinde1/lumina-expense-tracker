@@ -6,8 +6,8 @@ const outfit = Outfit({ subsets: ["latin"], variable: "--font-heading" });
 const jakarta = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Lumina Admin",
-  description: "Administrative console for Lumina Expense Tracker",
+  title: "Wealthy Admin",
+  description: "Administrative console for Wealthy Expense Tracker",
 };
 
 export default function RootLayout({

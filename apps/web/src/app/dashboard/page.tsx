@@ -125,6 +125,34 @@ export default function DashboardPage() {
     }
   }, [user, isMounted]);
 
+  // Sync dashboard stats to native Android Widget
+  useEffect(() => {
+    const syncStatsToWidget = async () => {
+      try {
+        const { Capacitor, registerPlugin } = await import("@capacitor/core");
+        if (Capacitor.isNativePlatform() && data) {
+          const LuminaBridge = registerPlugin<any>('LuminaBridge');
+          const formattedBalance = `₹${data.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+          const formattedInflow = `₹${data.income.toLocaleString('en-IN')}`;
+          const formattedOutflow = `₹${data.expense.toLocaleString('en-IN')}`;
+          
+          await LuminaBridge.updateWidgetData({
+            balance: formattedBalance,
+            inflow: formattedInflow,
+            outflow: formattedOutflow
+          });
+          console.log("✅ Synced updated statistics to home screen widget storage");
+        }
+      } catch (err) {
+        console.warn("⚠️ Failed to sync stats to widget:", err);
+      }
+    };
+
+    if (data && isMounted) {
+      syncStatsToWidget();
+    }
+  }, [data, isMounted]);
+
   // Sync background offline transaction alerts collected by SmsReceiver
   useEffect(() => {
     const checkAndSyncPendingSms = async () => {
@@ -197,14 +225,14 @@ export default function DashboardPage() {
   const { balance = 0, income = 0, expense = 0, recentTransactions = [] } = data || {};
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-700">
+    <div className="space-y-3 animate-in fade-in duration-700">
       {/* Main Stats Card */}
       <section className="relative overflow-hidden py-2 px-1 text-foreground dark:text-white">
         <div className="absolute top-0 right-0 p-2 opacity-5 text-foreground dark:text-white">
           <Wallet className="w-32 h-32 rotate-12" />
         </div>
         
-        <div className="relative space-y-6">
+        <div className="relative space-y-3">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground dark:text-white/40 mb-3 ml-1">Total Liquidity</p>
             <div className="flex items-baseline gap-2">

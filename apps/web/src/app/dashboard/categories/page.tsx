@@ -120,7 +120,7 @@ export default function CategoriesPage() {
   if (isLoading) return <div className="flex justify-center flex-col items-center gap-4 min-h-screen pb-20"><Loader2 className="animate-spin text-primary w-8 h-8" /><p className="text-xs uppercase  text-muted-foreground font-bold">Loading configs...</p></div>;
 
   return (
-    <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500">
+    <div className="space-y-3 animate-in fade-in zoom-in-95 duration-500">
 
       {/* Navigation Header */}
       <header className="flex items-center gap-4">

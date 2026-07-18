@@ -42,7 +42,7 @@ export default function DiagnosticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Form */}
           <div>
-            <form onSubmit={testLogin} className="space-y-6 bg-[#131315] p-8 rounded-lg border border-[#48474a]">
+            <form onSubmit={testLogin} className="space-y-3 bg-[#131315] p-8 rounded-lg border border-[#48474a]">
               <div>
                 <label className="text-xs uppercase text-zinc-400 font-bold mb-2 block">Diagnostic Email</label>
                 <input
@@ -74,7 +74,7 @@ export default function DiagnosticsPage() {
           </div>
 
           {/* Results Dump */}
-          <div className="space-y-6">
+          <div className="space-y-3">
             <div className="bg-[#131315] rounded-lg border border-[#48474a] overflow-hidden">
               <div className="bg-[#1f1f22] px-6 py-4 border-b border-[#48474a] flex justify-between items-center">
                 <span className="text-xs font-bold uppercase text-zinc-400">HTTP Response Status</span>

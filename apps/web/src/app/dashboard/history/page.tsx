@@ -374,7 +374,7 @@ export default function HistoryPage() {
   const grouped = groupByDate(transactions);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-3 animate-in fade-in duration-500">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full">
           {/* Search Input */}
@@ -520,7 +520,7 @@ export default function HistoryPage() {
           <p className="text-sm font-medium text-muted-foreground">No transactions found</p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {grouped.map(({ dateLabel, txs }) => (
             <div key={dateLabel}>
               <p className="text-[11px] font-bold uppercase text-muted-foreground mb-2 px-1">{dateLabel}</p>

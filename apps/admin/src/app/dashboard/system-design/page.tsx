@@ -310,7 +310,7 @@ export default function SystemDesignPage() {
   const currentStep = selectedSimulator.steps[activeStepIdx];
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom duration-500 pb-12">
+    <div className="space-y-3 animate-in slide-in-from-bottom duration-500 pb-12">
       
       {/* Header Row */}
       <header className="mb-5">
@@ -339,7 +339,7 @@ export default function SystemDesignPage() {
 
       {/* TAB 1: ARCHITECTURE DIAGRAM */}
       {activeTab === "architecture" && (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-3 animate-in fade-in duration-300">
           <div className="p-5 bg-[#1f1f22]/40 backdrop-blur-xl border border-[#48474a] rounded-xl space-y-4">
             <h3 className="font-heading text-xs font-black uppercase text-zinc-400 tracking-wider flex items-center gap-2">
               <Layers className="w-4.5 h-4.5 text-[#6bfe9c]" /> Architecture Graph Nodes
@@ -471,7 +471,7 @@ export default function SystemDesignPage() {
 
       {/* TAB 2: REQUEST LIFECYCLES */}
       {activeTab === "lifecycles" && (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-3 animate-in fade-in duration-300">
           
           {/* Simulation Selector Bar */}
           <div className="flex flex-col md:flex-row gap-3">

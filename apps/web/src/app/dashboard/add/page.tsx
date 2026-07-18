@@ -59,6 +59,7 @@ function AddTransactionForm() {
   const [smsPasteText, setSmsPasteText] = useState("");
   const [showPasteBox, setShowPasteBox] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const templateAppliedRef = useRef(false);
   const [debugData, setDebugData] = useState<any>(null);
   const [debugLogs, setDebugLogs] = useState<string[]>([]);
   const addDebugLog = (msg: string) => {
@@ -413,6 +414,22 @@ function AddTransactionForm() {
     }
   });
 
+  useEffect(() => {
+    const templateName = searchParams.get('template');
+    const templateAmountStr = searchParams.get('amount');
+    if (templateName && templateAmountStr && categories && categories.length > 0 && !templateAppliedRef.current) {
+      templateAppliedRef.current = true;
+      const amt = Number(templateAmountStr) || 0;
+      const tempClip = {
+        label: templateName,
+        amount: amt,
+        description: templateName,
+        categoryKeyword: templateName
+      };
+      handleApplyTemplate(tempClip);
+    }
+  }, [searchParams, categories]);
+
   const { data: paymentModes = [], isLoading: isLoadingPayModes } = useQuery<any[]>({
     queryKey: ['paymentModes'],
     queryFn: async () => {
@@ -456,7 +473,7 @@ function AddTransactionForm() {
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+    <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
 
       {/* Header Info */}
       <header className="flex items-center gap-3">
@@ -549,7 +566,7 @@ function AddTransactionForm() {
           )}
         </div>
 
-        <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-6 shadow-xl">
+        <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-3 shadow-xl">
 
           {/* Category Selector */}
           <div className="group relative">

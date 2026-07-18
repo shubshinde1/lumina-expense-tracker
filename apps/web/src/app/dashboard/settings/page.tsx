@@ -123,9 +123,9 @@ export default function SettingsPage() {
   if (!mounted) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 select-none">
+    <div className="space-y-3 animate-in fade-in duration-500 select-none">
 
-      <section className={`bg-card p-5 flex items-center gap-4 shadow-sm border border-border ${getCardRadiusClass()}`}>
+      <section className={`bg-card p-[15px] flex items-center gap-4 shadow-sm border border-border ${getCardRadiusClass()}`}>
         <div
           className="w-14 h-14 rounded-full bg-accent flex items-center justify-center border-2 shadow-inner shrink-0"
           style={{ borderColor: accentColor }}
@@ -155,19 +155,16 @@ export default function SettingsPage() {
 
       {/* Section 1: Appearance */}
       <div className="space-y-2">
-        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-4">Appearance</span>
-        <div className={`bg-card overflow-hidden shadow-sm border border-border divide-y divide-border text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Appearance</span>
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 divide-y divide-border/30 text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
 
           {/* Row 1: Theme Base */}
-          <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="px-[15px] py-[11px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-purple-500/10 text-purple-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
-                {theme === 'dark' ? <Moon className="w-4 h-4" /> : theme === 'light' ? <Sun className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                {theme === 'dark' ? <Moon className="w-4.5 h-4.5" /> : theme === 'light' ? <Sun className="w-4.5 h-4.5" /> : <Laptop className="w-4.5 h-4.5" />}
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">Theme Base</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Choose Dark, Light or System mode</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Theme Base</p>
             </div>
             <div className={`flex bg-accent p-0.5 border border-border shrink-0 ${getToggleContainerRadiusClass()}`}>
               <button
@@ -204,15 +201,12 @@ export default function SettingsPage() {
           </div>
 
           {/* Row 2: Accent Color */}
-          <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="px-[15px] py-[11px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-teal-500/10 text-teal-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
-                <Sliders className="w-4 h-4" />
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                <Sliders className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">Accent Color</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Highlight color of application elements</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Accent Color</p>
             </div>
             <div className="flex gap-2 items-center shrink-0">
               {COLORS.map(c => (
@@ -232,15 +226,12 @@ export default function SettingsPage() {
           </div>
 
           {/* Row 3: Roundness */}
-          <div className="px-5 py-4 flex items-center justify-between gap-4">
+          <div className="px-[15px] py-[11px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-blue-500/10 text-blue-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
-                <Circle className="w-4 h-4" />
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                <Circle className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">Roundness</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Roundness level of component edges</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Roundness</p>
             </div>
             <div className={`flex bg-accent p-0.5 border border-border shrink-0 ${getToggleContainerRadiusClass()}`}>
               {RADIUS.map(r => (
@@ -263,19 +254,16 @@ export default function SettingsPage() {
 
       {/* Section 2: Ledger Preferences */}
       <div className="space-y-2">
-        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-4">Ledger Preferences</span>
-        <div className={`bg-card overflow-hidden shadow-sm border border-border divide-y divide-border text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Ledger Preferences</span>
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 divide-y divide-border/30 text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
 
           {/* Row 1: Auto-Open Keyboard */}
-          <div className="px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/10 transition-colors duration-200">
+          <div className="px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/5 transition-colors duration-200">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-orange-500/10 text-orange-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
                 <Keyboard className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">Auto-Open Keyboard</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Pop keypad up automatically on Add Transaction</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Auto-Open Keyboard</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
               <input
@@ -301,15 +289,12 @@ export default function SettingsPage() {
           </div>
 
           {/* Row 2: SMS Transaction Parser */}
-          <div className="px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/10 transition-colors duration-200">
+          <div className="px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/5 transition-colors duration-200">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-green-500/10 text-green-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
                 <MessageSquare className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">SMS Transaction Parser</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Log transactions from incoming banking SMS text alerts</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">SMS Transaction Parser</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer select-none shrink-0">
               <input
@@ -337,65 +322,56 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Section 3: Application Configs */}
+      {/* Section 3: Application Data */}
       <div className="space-y-2">
-        <span className="text-[10px] font-black uppercase tracking-wider text-zinc-500 dark:text-zinc-400 px-4">Application Data</span>
-        <div className={`bg-card overflow-hidden shadow-sm border border-border text-foreground ${getCardRadiusClass()}`}>
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Application Data</span>
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 divide-y divide-border/30 text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
 
           {/* Row 1: Manage Configs */}
           <button
             onClick={() => router.push('/dashboard/categories')}
-            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-accent/50 transition-colors duration-200 cursor-pointer"
+            className="w-full px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/5 transition-colors duration-200 cursor-pointer"
           >
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-pink-500/10 text-pink-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
                 <SettingsIcon className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">Manage Configs</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Setup Categories & Subcategories</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Manage Configs</p>
             </div>
             <ChevronRight 
-              className="w-5 h-5 text-zinc-400 dark:text-zinc-600"
+              className="w-4 h-4 text-zinc-400 dark:text-zinc-600"
             />
           </button>
 
           {/* Row 2: Manage Payment Modes */}
           <button
             onClick={() => router.push('/dashboard/payment-modes')}
-            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-accent/50 border-t border-border transition-colors duration-200 cursor-pointer"
+            className="w-full px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/5 transition-colors duration-200 cursor-pointer"
           >
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-cyan-500/10 text-cyan-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
                 <Landmark className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">Payment Modes</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Setup UPI, Cards & Bank Accounts</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Payment Modes</p>
             </div>
             <ChevronRight 
-              className="w-5 h-5 text-zinc-400 dark:text-zinc-600"
+              className="w-4 h-4 text-zinc-400 dark:text-zinc-600"
             />
           </button>
 
           {/* Row 3: System Design */}
           <button
             onClick={() => router.push('/dashboard/settings/system-design')}
-            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-accent/50 border-t border-border transition-colors duration-200 cursor-pointer"
+            className="w-full px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/5 transition-colors duration-200 cursor-pointer"
           >
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-blue-500/10 text-blue-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
                 <Cpu className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-zinc-900 dark:text-white">System Architecture</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Interactive System Design & Request Lifecycles</p>
-              </div>
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">System Architecture</p>
             </div>
             <ChevronRight 
-              className="w-5 h-5 text-zinc-400 dark:text-zinc-600"
+              className="w-4 h-4 text-zinc-400 dark:text-zinc-600"
             />
           </button>
 
@@ -403,24 +379,22 @@ export default function SettingsPage() {
       </div>
 
       {/* Section 4: Session Control */}
-      <div className="space-y-2 pt-4">
-        <div className={`bg-card overflow-hidden shadow-sm border border-border text-foreground ${getCardRadiusClass()}`}>
+      <div className="space-y-2">
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Account</span>
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 text-foreground ${getCardRadiusClass()}`}>
 
           {/* Row 1: End Session */}
           <button
             onClick={handleLogout}
-            className="w-full px-5 py-4.5 flex items-center justify-between gap-4 hover:bg-red-500/5 transition-colors duration-200 cursor-pointer"
+            className="w-full px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-red-500/5 transition-colors duration-200 cursor-pointer"
           >
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-8 h-8 flex items-center justify-center bg-red-500/10 text-red-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
-                <LogOut className="w-4 h-4" />
+              <div className={`w-9 h-9 flex items-center justify-center bg-red-500/10 text-red-500 dark:text-red-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                <LogOut className="w-4.5 h-4.5" />
               </div>
-              <div className="text-left min-w-0">
-                <p className="font-bold text-sm text-red-400">End Session</p>
-                <p className="text-[10px] text-red-400/60 uppercase mt-0.5 truncate">Log out from your current user account</p>
-              </div>
+              <p className="font-bold text-sm text-red-500 dark:text-red-400">End Session</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-red-400/40" />
+            <ChevronRight className="w-4 h-4 text-red-400/40" />
           </button>
 
         </div>

@@ -170,7 +170,7 @@ function EditContent() {
   }
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
+    <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
       <header className="flex items-center gap-3">
         <Link
           href="/dashboard/history"
@@ -205,7 +205,7 @@ function EditContent() {
           <AmountInput value={amount} onChange={setAmount} />
         </div>
 
-        <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-6 shadow-xl">
+        <div className="w-full rounded-3xl p-6 bg-card border border-border space-y-3 shadow-xl">
           <div className="group relative">
             <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase">Category</label>
 

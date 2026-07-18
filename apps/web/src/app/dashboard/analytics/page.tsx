@@ -153,7 +153,7 @@ export default function AnalyticsPage() {
     .sort((a,b) => b.amount - a.amount).slice(0, 5);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 overflow-hidden">
+    <div className="space-y-3 animate-in fade-in duration-500 overflow-hidden">
 
       {/* Time Filters Secondary Bar */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar whitespace-nowrap pb-1">

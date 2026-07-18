@@ -375,7 +375,7 @@ export default function DashboardLayout({
         </div>
 
         <div 
-          className={`px-5 py-6 md:px-10 md:py-8 pb-32 max-w-5xl mx-auto w-full space-y-6 ${!isPulling.current ? 'transition-all duration-300' : ''}`}
+          className={`p-5 md:p-10 pb-32 max-w-5xl mx-auto w-full space-y-3 ${!isPulling.current ? 'transition-all duration-300' : ''}`}
           style={{
             transform: pullDistance > 0 ? `translateY(${pullDistance}px)` : undefined
           }}

@@ -1,6 +1,7 @@
 package com.lumina.tracker;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.util.Log;
 import com.getcapacitor.JSObject;
@@ -83,5 +84,35 @@ public class LuminaBridgePlugin extends Plugin {
         JSObject ret = new JSObject();
         ret.put("route", route);
         call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void updateWidgetData(PluginCall call) {
+        String balance = call.getString("balance");
+        String inflow = call.getString("inflow");
+        String outflow = call.getString("outflow");
+
+        if (balance == null || inflow == null || outflow == null) {
+            call.reject("balance, inflow, and outflow are required");
+            return;
+        }
+
+        SharedPreferences prefs = getContext().getSharedPreferences("LuminaPrefs", Context.MODE_PRIVATE);
+        prefs.edit()
+             .putString("widget_balance", balance)
+             .putString("widget_inflow", inflow)
+             .putString("widget_outflow", outflow)
+             .commit();
+
+        // Trigger widget update broadcast
+        Intent intent = new Intent(getContext(), LuminaAppWidgetProvider.class);
+        intent.setAction(android.appwidget.AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+        int[] ids = android.appwidget.AppWidgetManager.getInstance(getContext()).getAppWidgetIds(
+            new android.content.ComponentName(getContext(), LuminaAppWidgetProvider.class)
+        );
+        intent.putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+        getContext().sendBroadcast(intent);
+
+        call.resolve();
     }
 }

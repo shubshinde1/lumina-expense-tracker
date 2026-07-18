@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Settings2, Loader2, ChevronDown, Edit3, X, Check, ArrowLeft, CloudOff } from "lucide-react";
 import api from "@/lib/api";
 import Link from "next/link";
+import { useThemeStore } from "@/stores/useThemeStore";
 
 const ICONS_LIST = [
   "wallet", "account_balance", "payments", "credit_card", "receipt_long", "savings", "store",
@@ -26,6 +27,20 @@ const ICONS_LIST = [
 
 export default function CategoriesPage() {
   const queryClient = useQueryClient();
+  const { radius } = useThemeStore();
+
+  const getCardRadiusClass = () => {
+    if (radius === 0) return "rounded-none";
+    if (radius === 0.5) return "rounded-2xl";
+    return "rounded-[28px]";
+  };
+
+  const getToggleButtonRadiusClass = () => {
+    if (radius === 0) return "rounded-none";
+    if (radius === 0.5) return "rounded-xl";
+    return "rounded-full";
+  };
+
   const [expanded, setExpanded] = useState<string | null>(null);
   const [subName, setSubName] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -133,8 +148,8 @@ export default function CategoriesPage() {
       </header>
 
       {/* Add Category VIP Form */}
-      <section className="bg-card rounded-3xl p-6 md:p-8 border border-border shadow-sm relative overflow-visible z-30">
-        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-foreground mb-4">Create Category</p>
+      <section className={`bg-card p-[15px] border border-border/40 shadow-sm relative overflow-visible z-30 ${getCardRadiusClass()}`}>
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-2.5 block">Create Category</span>
         
         <div className="flex flex-col md:flex-row gap-3 relative z-10 w-full">
            <input
@@ -142,44 +157,44 @@ export default function CategoriesPage() {
              placeholder="Category Name"
              value={newCatName}
              onChange={(e) => setNewCatName(e.target.value)}
-             className="flex-1 bg-accent/50 border border-border rounded-2xl px-5 py-3.5 outline-none text-sm focus:border-primary transition-colors focus:bg-accent/80 font-medium w-full"
+             className="flex-1 bg-accent/50 border border-border rounded-xl px-4 py-2 outline-none text-sm focus:border-primary transition-colors focus:bg-accent/80 font-medium w-full"
            />
-           <div className="grid grid-cols-3 sm:flex gap-2 sm:gap-3 sm:h-14 mt-1 sm:mt-0">
+           <div className="grid grid-cols-3 sm:flex gap-2 sm:gap-3 sm:h-11 mt-1 sm:mt-0">
              {/* Segmented Toggle Switch */}
-             <div className="flex bg-accent/30 p-1.5 rounded-xl shrink-0 sm:min-w-[140px] col-span-3 sm:col-span-1 h-12 sm:h-full">
+             <div className="flex bg-accent/30 p-1.5 rounded-xl shrink-0 sm:min-w-[140px] col-span-3 sm:col-span-1 h-11 sm:h-full">
                <button
                  type="button"
                  onClick={() => setNewCatType('expense')}
-                 className={`flex-1 flex items-center justify-center text-[10px] uppercase tracking-[0.15em] font-bold rounded-lg transition-all duration-300 ${newCatType === 'expense' ? 'bg-destructive/20 shadow-sm text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
+                 className={`flex-1 flex items-center justify-center text-[10px] uppercase font-bold rounded-lg transition-all duration-300 ${newCatType === 'expense' ? 'bg-destructive/20 shadow-sm text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
                >
                  Expense
                </button>
                <button
                  type="button"
                  onClick={() => setNewCatType('income')}
-                 className={`flex-1 flex items-center justify-center text-[10px] uppercase tracking-[0.15em] font-bold rounded-lg transition-all duration-300 ${newCatType === 'income' ? 'bg-primary/20 shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                 className={`flex-1 flex items-center justify-center text-[10px] uppercase font-bold rounded-lg transition-all duration-300 ${newCatType === 'income' ? 'bg-primary/20 shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                >
                  Income
                </button>
              </div>
 
-             <div className="relative group overflow-hidden rounded-xl border border-border cursor-pointer flex items-center justify-center bg-accent/50 hover:border-primary transition-colors h-12 sm:h-full sm:w-14">
+             <div className="relative group overflow-hidden rounded-xl border border-border cursor-pointer flex items-center justify-center bg-accent/50 hover:border-primary transition-colors h-11 sm:h-full sm:w-11">
                 <input
                   type="color"
                   value={newCatColor}
                   onChange={(e) => setNewCatColor(e.target.value)}
                   className="absolute -inset-8 w-24 h-24 cursor-pointer opacity-0"
                 />
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded flex items-center justify-center shadow-inner pt-2 pb-2" style={{backgroundColor: newCatColor}}></div>
+                <div className="w-5 h-5 rounded flex items-center justify-center shadow-inner" style={{backgroundColor: newCatColor}}></div>
              </div>
 
              <button
                type="button"
                onClick={() => setShowIconPicker(!showIconPicker)}
-               className={`flex items-center justify-center gap-1 sm:gap-2 bg-accent/50 border rounded-xl sm:px-5 outline-none transition-colors cursor-pointer h-12 sm:h-full ${showIconPicker ? 'border-primary text-primary' : 'border-border hover:border-primary'}`}
+               className={`flex items-center justify-center gap-1 sm:gap-2 bg-accent/50 border rounded-xl sm:px-4 outline-none transition-colors cursor-pointer h-11 sm:h-full ${showIconPicker ? 'border-primary text-primary' : 'border-border hover:border-primary'}`}
              >
-               <span className="material-symbols-outlined text-[18px] sm:text-[20px]">{newCatIcon}</span>
-               <span className="hidden sm:inline font-medium text-sm">Icon</span>
+               <span className="material-symbols-outlined text-[18px]">{newCatIcon}</span>
+               <span className="hidden sm:inline font-medium text-xs">Icon</span>
                <ChevronDown className={`hidden sm:block w-3.5 h-3.5 transition-transform duration-300 ${showIconPicker ? 'rotate-180' : ''}`} />
              </button>
 
@@ -188,7 +203,7 @@ export default function CategoriesPage() {
                  if (newCatName) createCatMutation.mutate({ name: newCatName, color: newCatColor, icon: newCatIcon, type: newCatType });
                }}
                disabled={createCatMutation.isPending || !newCatName}
-               className="h-12 sm:h-full sm:px-5 bg-gradient-to-br from-primary to-[#1fc46a] rounded-xl flex items-center justify-center text-[#003417] active:scale-95 disabled:opacity-50 disabled:grayscale transition-all font-black border-2 border-primary/20"
+               className="h-11 sm:h-full sm:px-4 bg-gradient-to-br from-primary to-[#1fc46a] rounded-xl flex items-center justify-center text-[#003417] active:scale-95 disabled:opacity-50 disabled:grayscale transition-all font-black border-2 border-primary/20"
              >
                <Plus className="w-5 h-5" strokeWidth={3} />
              </button>
@@ -212,160 +227,160 @@ export default function CategoriesPage() {
          )}
       </section>
 
-      {/* Categories Ledger List */}
-      <section className="space-y-3 z-20 relative">
-        {categories?.map((cat: any) => (
-          <div key={cat._id} className="bg-card rounded-2xl border border-border overflow-visible transition-all shadow-sm relative">
-            
-            {editingCatId === cat._id ? (
-              /* Inline Category Edit View */
-              <div className="p-4 sm:p-5 bg-accent/30 rounded-2xl relative z-40">
-                <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-primary mb-3">Editing Category</p>
-                <div className="flex flex-col md:flex-row gap-3 relative z-10 w-full">
-                  <input
-                    type="text"
-                    placeholder="Category Name"
-                    value={editCatName}
-                    onChange={(e) => setEditCatName(e.target.value)}
-                    className="flex-1 bg-card border border-border rounded-xl px-4 py-3 outline-none text-sm focus:border-primary transition-colors font-medium shadow-sm w-full"
-                  />
-                  <div className="grid grid-cols-4 sm:flex gap-2 sm:h-12 mt-1 sm:mt-0">
-                     {/* Segmented Toggle Switch */}
-                    <div className="flex bg-card border border-border p-1 rounded-xl shadow-sm col-span-4 sm:col-span-1 h-11 sm:h-full sm:min-w-[120px]">
-                      <button
-                        type="button"
-                        onClick={() => setEditCatType('expense')}
-                        className={`flex-1 flex items-center justify-center text-[9px] uppercase  font-bold rounded-lg transition-all duration-300 ${editCatType === 'expense' ? 'bg-destructive/20 shadow-sm text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
-                      >
-                        Exp
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditCatType('income')}
-                        className={`flex-1 flex items-center justify-center text-[9px] uppercase  font-bold rounded-lg transition-all duration-300 ${editCatType === 'income' ? 'bg-primary/20 shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-                      >
-                        Inc
-                      </button>
-                    </div>
-
-                    <div className="relative overflow-hidden rounded-xl border border-border cursor-pointer flex items-center justify-center bg-card shadow-sm h-11 sm:h-full sm:w-12">
-                        <input
-                          type="color"
-                          value={editCatColor}
-                          onChange={(e) => setEditCatColor(e.target.value)}
-                          className="absolute -inset-8 w-24 h-24 cursor-pointer opacity-0 z-10"
-                        />
-                        <div className="w-5 h-5 rounded shadow-inner" style={{backgroundColor: editCatColor}}></div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setShowEditIconPicker(!showEditIconPicker)}
-                      className="flex items-center justify-center bg-card border border-border rounded-xl outline-none shadow-sm h-11 sm:h-full sm:px-3"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">{editCatIcon}</span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        updateCatMutation.mutate({ id: cat._id, payload: { name: editCatName, type: editCatType, color: editCatColor, icon: editCatIcon } });
-                      }}
-                      disabled={updateCatMutation.isPending || !editCatName}
-                      className="h-11 sm:h-full sm:px-4 bg-primary text-[#003417] rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-50 transition-all shadow-sm"
-                    >
-                      <Check className="w-5 h-5" />
-                    </button>
-                    <button
-                      onClick={() => { setEditingCatId(null); setShowEditIconPicker(false); }}
-                      className="h-11 sm:h-full sm:px-3 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white rounded-xl flex items-center justify-center transition-colors"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Edit Floating Icon Picker grid */}
-                {showEditIconPicker && (
-                  <div className="absolute top-[100%] left-0 right-0 z-[100] bg-card/95 backdrop-blur-xl rounded-3xl p-5 border border-border mt-2 shadow-2xl h-56 overflow-y-auto grid grid-cols-4 sm:grid-cols-8 md:grid-cols-10 gap-2 animate-in slide-in-from-top-4 fade-in duration-300 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
-                    {ICONS_LIST.map(icon => (
+      {/* Categories Ledger List Card */}
+      <section className="space-y-2 z-20 relative">
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Categories Ledger</span>
+        
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 divide-y divide-border/30 text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
+          {categories?.map((cat: any) => (
+            <div key={cat._id} className="transition-all relative">
+              
+              {editingCatId === cat._id ? (
+                /* Inline Category Edit View */
+                <div className="p-4 bg-accent/30 relative z-40">
+                  <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-primary mb-3">Editing Category</p>
+                  <div className="flex flex-col md:flex-row gap-3 relative z-10 w-full">
+                    <input
+                      type="text"
+                      placeholder="Category Name"
+                      value={editCatName}
+                      onChange={(e) => setEditCatName(e.target.value)}
+                      className="flex-1 bg-card border border-border rounded-xl px-4 py-2 outline-none text-sm focus:border-primary transition-colors font-medium shadow-sm w-full"
+                    />
+                    <div className="grid grid-cols-4 sm:flex gap-2 sm:h-11 mt-1 sm:mt-0">
+                       {/* Segmented Toggle Switch */}
+                      <div className="flex bg-card border border-border p-1 rounded-xl shadow-sm col-span-4 sm:col-span-1 h-11 sm:h-full sm:min-w-[120px]">
                         <button
-                          key={icon}
-                          onClick={() => { setEditCatIcon(icon); setShowEditIconPicker(false); }}
-                          className={`aspect-square rounded-xl flex items-center justify-center transition-all ${editCatIcon === icon ? 'bg-primary/20 text-primary border border-primary/50 scale-105' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
-                          title={icon}
+                          type="button"
+                          onClick={() => setEditCatType('expense')}
+                          className={`flex-1 flex items-center justify-center text-[9px] uppercase font-bold rounded-lg transition-all duration-300 ${editCatType === 'expense' ? 'bg-destructive/20 shadow-sm text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
                         >
-                          <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                          Exp
                         </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              /* Display Category View */
-              <div 
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-accent/40 transition-colors group" 
-                onClick={() => setExpanded(expanded === cat._id ? null : cat._id)}
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-105 duration-300"
-                    style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
-                  >
-                    <span className="material-symbols-outlined text-lg">{cat.icon}</span>
-                  </div>
-                  <div className="text-left min-w-0">
-                    <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 flex-wrap">
-                      {cat.name}
-                      <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold ${
-                        cat.type === 'expense' 
-                          ? 'bg-red-500/10 text-red-400' 
-                          : 'bg-emerald-500/10 text-emerald-400'
-                      }`}>
-                        {cat.type}
-                      </span>
-                      {cat.isGlobal && (
-                        <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
-                      )}
-                      {cat.isOffline && (
-                        <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
-                      )}
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
-                      {cat.subcategories?.length || 0} sub-categories configured
-                    </p>
-                  </div>
-                </div>
+                        <button
+                          type="button"
+                          onClick={() => setEditCatType('income')}
+                          className={`flex-1 flex items-center justify-center text-[9px] uppercase font-bold rounded-lg transition-all duration-300 ${editCatType === 'income' ? 'bg-primary/20 shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                          Inc
+                        </button>
+                      </div>
 
-                <div className="flex items-center gap-2">
-                  {!cat.isGlobal && editingCatId !== cat._id && (
-                    <>
+                      <div className="relative overflow-hidden rounded-xl border border-border cursor-pointer flex items-center justify-center bg-card shadow-sm h-11 sm:h-full sm:w-11">
+                          <input
+                            type="color"
+                            value={editCatColor}
+                            onChange={(e) => setEditCatColor(e.target.value)}
+                            className="absolute -inset-8 w-24 h-24 cursor-pointer opacity-0 z-10"
+                          />
+                          <div className="w-5 h-5 rounded shadow-inner" style={{backgroundColor: editCatColor}}></div>
+                      </div>
+
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openEditCat(cat);
-                          setDeleteConfirmId(null);
-                        }}
-                        className="p-2 hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
+                        type="button"
+                        onClick={() => setShowEditIconPicker(!showEditIconPicker)}
+                        className="flex items-center justify-center bg-card border border-border rounded-xl outline-none shadow-sm h-11 sm:h-full sm:px-3"
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
+                        <span className="material-symbols-outlined text-[18px]">{editCatIcon}</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          updateCatMutation.mutate({ id: cat._id, payload: { name: editCatName, type: editCatType, color: editCatColor, icon: editCatIcon } });
+                        }}
+                        disabled={updateCatMutation.isPending || !editCatName}
+                        className="h-11 sm:h-full sm:px-4 bg-primary text-[#003417] rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-50 transition-all shadow-sm"
+                      >
+                        <Check className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeleteConfirmId(cat._id);
-                        }}
-                        className="p-2 hover:bg-red-500/10 text-red-400/80 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => { setEditingCatId(null); setShowEditIconPicker(false); }}
+                        className="h-11 sm:h-full sm:px-3 bg-destructive/10 text-destructive hover:bg-destructive hover:text-white rounded-xl flex items-center justify-center transition-colors"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <X className="w-5 h-5" />
                       </button>
-                    </>
+                    </div>
+                  </div>
+
+                  {/* Edit Floating Icon Picker grid */}
+                  {showEditIconPicker && (
+                    <div className="absolute top-[100%] left-0 right-0 z-[100] bg-card/95 backdrop-blur-xl rounded-3xl p-5 border border-border mt-2 shadow-2xl h-56 overflow-y-auto grid grid-cols-4 sm:grid-cols-8 md:grid-cols-10 gap-2 animate-in slide-in-from-top-4 fade-in duration-300 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+                      {ICONS_LIST.map(icon => (
+                          <button
+                            key={icon}
+                            onClick={() => { setEditCatIcon(icon); setShowEditIconPicker(false); }}
+                            className={`aspect-square rounded-xl flex items-center justify-center transition-all ${editCatIcon === icon ? 'bg-primary/20 text-primary border border-primary/50 scale-105' : 'text-muted-foreground hover:bg-accent hover:text-foreground'}`}
+                            title={icon}
+                          >
+                            <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                          </button>
+                      ))}
+                    </div>
                   )}
-                  <div className="p-2 hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg transition-colors">
-                    <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded === cat._id ? "rotate-180" : ""}`} />
+                </div>
+              ) : (
+                /* Display Category View */
+                <div 
+                  className="flex items-center justify-between px-[15px] py-[11px] cursor-pointer hover:bg-accent/40 transition-colors group" 
+                  onClick={() => setExpanded(expanded === cat._id ? null : cat._id)}
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div 
+                      className={`w-9 h-9 flex items-center justify-center transition-transform group-hover:scale-105 duration-300 ${getToggleButtonRadiusClass()}`}
+                      style={{ backgroundColor: `${cat.color}15`, color: cat.color }}
+                    >
+                      <span className="material-symbols-outlined text-lg">{cat.icon}</span>
+                    </div>
+                    <div className="text-left min-w-0">
+                      <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 flex-wrap">
+                        {cat.name}
+                        <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold ${
+                          cat.type === 'expense' 
+                            ? 'bg-red-500/10 text-red-400' 
+                            : 'bg-emerald-500/10 text-emerald-400'
+                        }`}>
+                          {cat.type}
+                        </span>
+                        {cat.isGlobal && (
+                          <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
+                        )}
+                        {cat.isOffline && (
+                          <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                        )}
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {!cat.isGlobal && editingCatId !== cat._id && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditCat(cat);
+                            setDeleteConfirmId(null);
+                          }}
+                          className="p-2 hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmId(cat._id);
+                          }}
+                          className="p-2 hover:bg-red-500/10 text-red-400/80 hover:text-red-400 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+                    <div className="p-2 hover:bg-accent text-muted-foreground hover:text-foreground rounded-lg transition-colors">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${expanded === cat._id ? "rotate-180" : ""}`} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Subcategories (Expanded view) */}
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${expanded === cat._id ? 'max-h-[800px] opacity-100 border-t border-border bg-muted/40' : 'max-h-0 opacity-0'}`}>
@@ -466,6 +481,7 @@ export default function CategoriesPage() {
 
           </div>
         ))}
+        </div>
       </section>
 
       {/* Delete Confirmation Modal */}

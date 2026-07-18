@@ -151,6 +151,15 @@ export default function SettingsPage() {
             </span>
           </div>
         </div>
+
+        {/* Log Out Button */}
+        <button
+          onClick={handleLogout}
+          className={`w-9 h-9 flex items-center justify-center bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/15 shrink-0 transition-all active:scale-95 cursor-pointer ${getToggleButtonRadiusClass()}`}
+          title="End Session"
+        >
+          <LogOut className="w-4 h-4" />
+        </button>
       </section>
 
       {/* Section 1: Appearance */}
@@ -353,22 +362,6 @@ export default function SettingsPage() {
                 <Landmark className="w-4.5 h-4.5" />
               </div>
               <p className="font-bold text-sm text-zinc-900 dark:text-white">Payment Modes</p>
-            </div>
-            <ChevronRight 
-              className="w-4 h-4 text-zinc-400 dark:text-zinc-600"
-            />
-          </button>
-
-          {/* Row 3: System Design */}
-          <button
-            onClick={() => router.push('/dashboard/settings/system-design')}
-            className="w-full px-[15px] py-[11px] flex items-center justify-between gap-4 hover:bg-zinc-100/30 dark:hover:bg-zinc-800/5 transition-colors duration-200 cursor-pointer"
-          >
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
-                <Cpu className="w-4.5 h-4.5" />
-              </div>
-              <p className="font-bold text-sm text-zinc-900 dark:text-white">System Architecture</p>
             </div>
             <ChevronRight 
               className="w-4 h-4 text-zinc-400 dark:text-zinc-600"

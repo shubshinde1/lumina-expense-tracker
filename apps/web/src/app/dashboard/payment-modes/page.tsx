@@ -5,9 +5,24 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2, Loader2, ChevronDown, Edit3, X, Check, ArrowLeft, Landmark, CloudOff } from "lucide-react";
 import api from "@/lib/api";
 import Link from "next/link";
+import { useThemeStore } from "@/stores/useThemeStore";
 
 export default function PaymentModesPage() {
   const queryClient = useQueryClient();
+  const { radius } = useThemeStore();
+
+  const getCardRadiusClass = () => {
+    if (radius === 0) return "rounded-none";
+    if (radius === 0.5) return "rounded-2xl";
+    return "rounded-[28px]";
+  };
+
+  const getToggleButtonRadiusClass = () => {
+    if (radius === 0) return "rounded-none";
+    if (radius === 0.5) return "rounded-xl";
+    return "rounded-full";
+  };
+
   const [expanded, setExpanded] = useState<string | null>(null);
   const [subName, setSubName] = useState("");
   
@@ -117,8 +132,8 @@ export default function PaymentModesPage() {
       </header>
 
       {/* Add Custom Payment Mode Form */}
-      <section className="bg-card rounded-[28px] p-6 border border-border shadow-sm">
-        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground mb-4">Create Payment Mode</p>
+      <section className={`bg-card p-[15px] border border-border/40 shadow-sm ${getCardRadiusClass()}`}>
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-2.5 block">Create Payment Mode</span>
         
         <form onSubmit={handleCreateMode} className="flex gap-2.5 w-full">
           <input
@@ -138,22 +153,22 @@ export default function PaymentModesPage() {
         </form>
       </section>
 
-      {/* Payment Modes Grid List */}
-      <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.2em] font-black text-muted-foreground px-4">Available Modes</p>
+      {/* Payment Modes List Card */}
+      <section className="space-y-2">
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Available Modes</span>
         
-        <div className="space-y-3.5">
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 divide-y divide-border/30 text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
           {paymentModes.map((mode: any) => (
             <div 
               key={mode._id} 
-              className="bg-card rounded-[24px] overflow-hidden border border-border shadow-sm transition-all"
+              className="transition-all"
             >
               
               {/* Parent Payment Mode Header Bar */}
-              <div className="p-4 flex items-center justify-between gap-4">
+              <div className="px-[15px] py-[11px] flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <Landmark className="w-4 h-4" />
+                  <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                    <Landmark className="w-4.5 h-4.5" />
                   </div>
                   {editingModeId === mode._id ? (
                     <div className="flex items-center gap-1.5 flex-1 max-w-xs">
@@ -181,15 +196,12 @@ export default function PaymentModesPage() {
                       <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 flex-wrap">
                         {mode.name}
                         {mode.isGlobal && (
-                          <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
+                          <span className="text-[8px] bg-muted text-zinc-500 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">System</span>
                         )}
                         {mode.isOffline && (
-                          <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                          <span className="text-[8px] bg-muted text-zinc-500 px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2.5 h-2.5"/>Offline</span>
                         )}
                       </h4>
-                      <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
-                        {mode.subPaymentModes?.length || 0} sub-modes configured
-                      </p>
                     </div>
                   )}
                 </div>
@@ -270,23 +282,23 @@ export default function PaymentModesPage() {
                                 onClick={() => updateSubMutation.mutate({ modeId: mode._id, subId: sub._id, name: editSubName })}
                                 className="p-1 bg-emerald-500/10 text-emerald-500 rounded-lg"
                               >
-                                <Check className="w-3 h-3" />
+                                <Check className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 onClick={() => setEditingSubId(null)}
                                 className="p-1 bg-muted text-muted-foreground rounded-lg"
                               >
-                                <X className="w-3 h-3" />
+                                <X className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           ) : (
                             <>
                               <span className="text-xs text-foreground font-bold flex items-center gap-1.5">
-                              {sub.name}
-                              {sub.isOffline && (
-                                <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
-                              )}
-                            </span>
+                                {sub.name}
+                                {sub.isOffline && (
+                                  <span className="text-[8px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold border border-border flex items-center gap-0.5"><CloudOff className="w-2 h-2"/>Offline</span>
+                                )}
+                              </span>
                               <div className="flex items-center gap-1.5">
                                 <button
                                   onClick={() => {

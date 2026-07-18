@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Home, PieChart, PlusCircle, LayoutList, Bell, ArrowDownRight, ArrowUpRight, X, User, Mic } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, cloneElement } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { toast } from "sonner";
@@ -17,6 +17,24 @@ export default function BottomNav() {
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
   const [isHolding, setIsHolding] = useState(false);
   const [dragSelection, setDragSelection] = useState<"expense" | "income" | "voice" | null>(null);
+
+  // FAB click animation state
+  const [isFabAnimating, setIsFabAnimating] = useState(false);
+  const fabTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerFabAnimation = () => {
+    if (fabTimerRef.current) clearTimeout(fabTimerRef.current);
+    setIsFabAnimating(true);
+    fabTimerRef.current = setTimeout(() => {
+      setIsFabAnimating(false);
+    }, 500);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (fabTimerRef.current) clearTimeout(fabTimerRef.current);
+    };
+  }, []);
 
   // Background poll notifications
   const { data: notifications = [] } = useQuery<any[]>({
@@ -195,12 +213,13 @@ export default function BottomNav() {
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onClick={() => {
+               triggerFabAnimation();
                if (!isHolding) router.push('/dashboard/add');
             }}
             className="flex flex-col items-center cursor-pointer select-none touch-none"
           >
-            <div className={`flex items-center justify-center w-14 h-14 bg-gradient-to-br transition-all rounded-full text-[#003417] border-[4px] border-background relative z-20 ${isHolding ? 'from-[#0e0e10] to-[#1f1f22] scale-95 border-primary/50 text-white shadow-[0_0_30px_rgba(107,254,156,0.3)]' : 'from-primary to-[#1fc46a] shadow-[0_8px_16px_-4px_rgba(107,254,156,0.3)]'}`}>
-               <PlusCircle className={`w-6 h-6 transition-transform duration-300 ${isHolding ? 'rotate-45 text-white/50' : ''}`} strokeWidth={2.5} />
+            <div className={`flex items-center justify-center w-14 h-14 transition-all rounded-full border-[4px] border-background relative z-20 ${isHolding ? 'bg-[#0e0e10] scale-95 border-primary/50 text-white shadow-[0_0_30px] shadow-primary/30' : 'bg-primary text-primary-foreground shadow-[0_8px_16px_-4px] shadow-primary/30'}`}>
+               <PlusCircle className={`w-6 h-6 transition-transform duration-300 ${isHolding ? 'rotate-45 text-white/50' : ''} ${isFabAnimating ? 'animate-fab-spin-pop' : ''}`} strokeWidth={2.5} />
                {dragSelection && (
                  <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-50 pointer-events-none" />
                )}
@@ -216,14 +235,49 @@ export default function BottomNav() {
 }
 
 function NavItem({ href, icon, label, active, badgeCount }: { href: string; icon: React.ReactNode; label: string; active: boolean; badgeCount?: number }) {
+  const [isAnimating, setIsAnimating] = useState(false);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerAnimation = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setIsAnimating(true);
+    timerRef.current = setTimeout(() => {
+      setIsAnimating(false);
+    }, 500);
+  };
+
+  useEffect(() => {
+    if (active) {
+      triggerAnimation();
+    }
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [active]);
+
   return (
     <li>
-      <Link href={href} className="flex flex-col items-center justify-center space-y-1 w-12 group transition-all relative">
-        <div className={`transition-colors ${active ? "text-primary" : "text-muted-foreground group-hover:text-primary"}`}>
-          {icon}
+      <Link 
+        href={href} 
+        onClick={triggerAnimation}
+        className="flex flex-col items-center justify-center space-y-1 w-12 group transition-all relative"
+      >
+        <div className={`relative w-5 h-5 transition-colors ${active ? "text-primary" : "text-muted-foreground group-hover:text-primary"} ${isAnimating ? "animate-tab-squish" : ""}`}>
+          {/* Outline Icon */}
+          {cloneElement(icon as React.ReactElement<any>, {
+            className: "w-5 h-5",
+          })}
+          {/* Filled Icon with transition-based clip-path */}
+          {cloneElement(icon as React.ReactElement<any>, {
+            className: "w-5 h-5 absolute inset-0 transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]",
+            fill: "currentColor",
+            style: {
+              clipPath: active ? "inset(0% 0 0 0)" : "inset(100% 0 0 0)",
+            }
+          })}
         </div>
         {badgeCount !== undefined && badgeCount > 0 && (
-          <span className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-primary text-black font-heading font-black text-[8px] flex items-center justify-center border border-card shadow-[0_2px_8px_rgba(107,254,156,0.3)]">
+          <span className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-primary text-black font-heading font-black text-[8px] flex items-center justify-center border border-card shadow-[0_2px_8px] shadow-primary/30">
             {badgeCount}
           </span>
         )}
@@ -234,3 +288,4 @@ function NavItem({ href, icon, label, active, badgeCount }: { href: string; icon
     </li>
   );
 }
+

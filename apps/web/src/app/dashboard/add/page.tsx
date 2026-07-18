@@ -279,6 +279,9 @@ function AddTransactionForm() {
           toast.info("No speech detected. Please speak clearly.");
         } else if (event.error === "not-allowed") {
           toast.error("Microphone access denied. Enable it in your browser settings.");
+        } else if (event.error === "aborted") {
+          // 'aborted' occurs when manually stopping the recognition or navigating away; ignore it.
+          console.log("Speech recognition aborted.");
         } else {
           console.error("Speech recognition error:", event.error);
           toast.error(`Voice recognition error: ${event.error}`);
@@ -411,23 +414,20 @@ function AddTransactionForm() {
     <div className="space-y-6 animate-in slide-in-from-bottom duration-500">
 
       {/* Header Info */}
-      <header className="flex items-center gap-4">
+      <header className="flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="w-10 h-10 bg-card rounded-xl flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors"
+          className="w-12 h-12 bg-card rounded-full flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors shrink-0"
         >
           <ArrowLeft className="text-foreground w-5 h-5" />
         </Link>
-      </header>
-
-      <form onSubmit={handleSubmit} className="space-y-8">
 
         {/* Type Toggle */}
-        <div className="flex p-1.5 bg-card/50 rounded-full">
+        <div className="flex p-1 bg-card/50 rounded-full flex-1">
           <button
             type="button"
             onClick={() => { setType('expense'); setCategoryId(""); }}
-            className={`flex-1 py-3 px-6 rounded-full text-sm font-medium transition-all duration-300 ${type === 'expense' ? 'bg-card text-destructive shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all duration-300 ${type === 'expense' ? 'bg-card text-destructive shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
           >
             Expense
@@ -435,12 +435,15 @@ function AddTransactionForm() {
           <button
             type="button"
             onClick={() => { setType('income'); setCategoryId(""); }}
-            className={`flex-1 py-3 px-6 rounded-full text-sm font-medium transition-all duration-300 ${type === 'income' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all duration-300 ${type === 'income' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
           >
             Income
           </button>
         </div>
+      </header>
+
+      <form onSubmit={handleSubmit} className="space-y-8">
 
         {/* Amount with Voice AI Mic */}
         <div className="group relative flex flex-col items-center">

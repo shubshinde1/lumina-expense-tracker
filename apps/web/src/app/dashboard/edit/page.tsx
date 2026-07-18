@@ -8,6 +8,7 @@ import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
 import AmountInput from "@/components/AmountInput";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useThemeStore } from "@/stores/useThemeStore";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
@@ -26,6 +27,8 @@ function EditContent() {
   const id = searchParams.get('id');
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const { radius } = useThemeStore();
+  const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
   
   const [isMounted, setIsMounted] = useState(false);
   const [type, setType] = useState<"expense" | "income">("expense");
@@ -171,24 +174,24 @@ function EditContent() {
       <header className="flex items-center gap-3">
         <Link
           href="/dashboard/history"
-          className="w-12 h-12 bg-card rounded-full flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors shrink-0"
+          className={`w-12 h-12 bg-card flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors shrink-0 ${pillRoundness}`}
         >
           <ArrowLeft className="text-foreground w-5 h-5" />
         </Link>
 
         {/* Type Toggle */}
-        <div className="flex p-1 bg-card/50 rounded-full flex-1">
+        <div className={`flex p-1 bg-card/50 flex-1 ${pillRoundness}`}>
           <button
             type="button"
             onClick={() => { setType('expense'); setCategoryId(""); }}
-            className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all duration-300 ${type === 'expense' ? 'bg-card text-destructive shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 py-2.5 px-4 text-sm font-medium transition-all duration-300 ${pillRoundness} ${type === 'expense' ? 'bg-card text-destructive shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Expense
           </button>
           <button
             type="button"
             onClick={() => { setType('income'); setCategoryId(""); }}
-            className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all duration-300 ${type === 'income' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 py-2.5 px-4 text-sm font-medium transition-all duration-300 ${pillRoundness} ${type === 'income' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
           >
             Income
           </button>
@@ -239,7 +242,7 @@ function EditContent() {
                               style={categoryId === c._id ? { borderColor: c.color, backgroundColor: `${c.color}15` } : {}}
                             >
                               <div 
-                                className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300"
+                                className={`w-10 h-10 flex items-center justify-center mb-1.5 transition-all duration-300 ${pillRoundness}`}
                                 style={{ 
                                   backgroundColor: categoryId === c._id ? `${c.color}22` : `${c.color}0d`,
                                 }}
@@ -271,7 +274,7 @@ function EditContent() {
                                   key={sub._id}
                                   type="button"
                                   onClick={() => setSubcategoryId(sub._id)}
-                                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                                  className={`px-3.5 py-1.5 text-xs font-bold transition-all border ${pillRoundness} ${
                                     subcategoryId === sub._id 
                                       ? 'bg-primary text-black border-primary' 
                                       : 'bg-background dark:bg-zinc-800/60 text-muted-foreground hover:text-foreground border-border/40'
@@ -330,7 +333,7 @@ function EditContent() {
                       setPaymentMode(mode.name);
                       setSubPaymentMode("");
                     }}
-                    className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                    className={`px-4 py-2 text-[11px] font-bold uppercase transition-all cursor-pointer ${pillRoundness} ${
                       paymentMode === mode.name 
                         ? 'bg-foreground text-background shadow-sm' 
                         : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -354,7 +357,7 @@ function EditContent() {
                       key={sub._id}
                       type="button"
                       onClick={() => setSubPaymentMode(sub.name)}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase transition-all cursor-pointer ${pillRoundness} ${
                         subPaymentMode === sub.name 
                           ? 'bg-primary text-black shadow-sm' 
                           : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -370,7 +373,7 @@ function EditContent() {
 
           <div className="group relative pt-4 pb-2 border-t border-border mt-6">
              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <div className={`p-2 rounded-full ${isFetchingLocation ? 'bg-primary/20 text-primary animate-pulse' : locationObj ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground'}`}>
+                <div className={`p-2 ${pillRoundness} ${isFetchingLocation ? 'bg-primary/20 text-primary animate-pulse' : locationObj ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground'}`}>
                   {isFetchingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4"/>}
                 </div>
                 <div className="flex-1">

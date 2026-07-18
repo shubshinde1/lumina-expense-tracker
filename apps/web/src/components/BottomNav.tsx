@@ -7,11 +7,14 @@ import React, { useState, useEffect, useRef, cloneElement } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { toast } from "sonner";
+import { useThemeStore } from "@/stores/useThemeStore";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { radius } = useThemeStore();
+  const fabRoundnessClass = radius === 0 ? "rounded-none" : "rounded-full";
   
   // Hold & Swipe detection logic
   const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
@@ -178,7 +181,7 @@ export default function BottomNav() {
                onClick={() => router.push("/dashboard/add?type=expense")}
                className={`flex flex-col items-center gap-1.5 transition-transform cursor-pointer ${dragSelection === 'expense' ? 'scale-115 -translate-y-1' : 'scale-100'}`}
              >
-               <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'expense' ? 'bg-red-500 shadow-red-500/50' : 'bg-destructive'}`}>
+               <div className={`w-11 h-11 flex items-center justify-center shadow-lg transition-colors ${fabRoundnessClass} ${dragSelection === 'expense' ? 'bg-red-500 shadow-red-500/50' : 'bg-destructive'}`}>
                   <ArrowUpRight className="w-5 h-5 text-white" strokeWidth={3} />
                </div>
                <span className={`text-[9px] font-black uppercase tracking-wider bg-[#131315]/90 border border-zinc-800 px-2 py-0.5 rounded-lg backdrop-blur ${dragSelection === 'expense' ? 'text-red-500 border-red-550/30' : 'text-destructive/80'}`}>Expense</span>
@@ -189,7 +192,7 @@ export default function BottomNav() {
                onClick={() => router.push("/dashboard/add?voice=true")}
                className={`flex flex-col items-center gap-1.5 transition-transform cursor-pointer ${dragSelection === 'voice' ? 'scale-115 -translate-y-1' : 'scale-100'}`}
              >
-               <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'voice' ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-emerald-600'}`}>
+               <div className={`w-11 h-11 flex items-center justify-center shadow-lg transition-colors ${fabRoundnessClass} ${dragSelection === 'voice' ? 'bg-emerald-500 shadow-emerald-500/50' : 'bg-emerald-600'}`}>
                   <Mic className="w-5 h-5 text-white animate-pulse" strokeWidth={2.5} />
                </div>
                <span className={`text-[9px] font-black uppercase tracking-wider bg-[#131315]/90 border border-zinc-800 px-2 py-0.5 rounded-lg backdrop-blur ${dragSelection === 'voice' ? 'text-emerald-500 border-emerald-550/30' : 'text-emerald-500/80'}`}>Dictate</span>
@@ -200,7 +203,7 @@ export default function BottomNav() {
                onClick={() => router.push("/dashboard/add?type=income")}
                className={`flex flex-col items-center gap-1.5 transition-transform cursor-pointer ${dragSelection === 'income' ? 'scale-115 -translate-y-1' : 'scale-100'}`}
              >
-               <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-colors ${dragSelection === 'income' ? 'bg-[#1fc46a] shadow-[#1fc46a]/50' : 'bg-primary'}`}>
+               <div className={`w-11 h-11 flex items-center justify-center shadow-lg transition-colors ${fabRoundnessClass} ${dragSelection === 'income' ? 'bg-[#1fc46a] shadow-[#1fc46a]/50' : 'bg-primary'}`}>
                   <ArrowDownRight className="w-5 h-5 text-black" strokeWidth={3} />
                </div>
                <span className={`text-[9px] font-black uppercase tracking-wider bg-[#131315]/90 border border-zinc-800 px-2 py-0.5 rounded-lg backdrop-blur ${dragSelection === 'income' ? 'text-[#1fc46a] border-primary/30' : 'text-primary/80'}`}>Income</span>
@@ -218,10 +221,10 @@ export default function BottomNav() {
             }}
             className="flex flex-col items-center cursor-pointer select-none touch-none"
           >
-            <div className={`flex items-center justify-center w-14 h-14 transition-all rounded-full border-[4px] border-background relative z-20 ${isHolding ? 'bg-[#0e0e10] scale-95 border-primary/50 text-white shadow-[0_0_30px] shadow-primary/30' : 'bg-primary text-primary-foreground shadow-[0_8px_16px_-4px] shadow-primary/30'}`}>
+            <div className={`flex items-center justify-center w-14 h-14 transition-all border-[4px] border-background relative z-20 ${fabRoundnessClass} ${isHolding ? 'bg-[#0e0e10] scale-95 border-primary/50 text-white shadow-[0_0_30px] shadow-primary/30' : 'bg-primary text-primary-foreground shadow-[0_8px_16px_-4px] shadow-primary/30'}`}>
                <PlusCircle className={`w-6 h-6 transition-transform duration-300 ${isHolding ? 'rotate-45 text-white/50' : ''} ${isFabAnimating ? 'animate-fab-spin-pop' : ''}`} strokeWidth={2.5} />
                {dragSelection && (
-                 <div className="absolute inset-0 rounded-full border-2 border-primary animate-ping opacity-50 pointer-events-none" />
+                 <div className={`absolute inset-0 border-2 border-primary animate-ping opacity-50 pointer-events-none ${fabRoundnessClass}`} />
                )}
             </div>
           </div>

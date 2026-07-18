@@ -12,12 +12,32 @@ import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useThemeStore } from "@/stores/useThemeStore";
+
+const TEMPLATES = {
+  expense: [
+    { label: "☕ Coffee", amount: 50, description: "Coffee", categoryKeyword: "Food" },
+    { label: "🚇 Metro", amount: 30, description: "Metro travel", categoryKeyword: "Transport" },
+    { label: "🛒 Groceries", amount: 500, description: "Groceries", categoryKeyword: "Groceries" },
+    { label: "🍔 Food", amount: 200, description: "Lunch/Dinner", categoryKeyword: "Food" },
+    { label: "🍿 Movie", amount: 350, description: "Movie ticket", categoryKeyword: "Entertainment" },
+    { label: "⛽ Fuel", amount: 1000, description: "Fuel refuel", categoryKeyword: "Transport" }
+  ],
+  income: [
+    { label: "💼 Salary", amount: 50000, description: "Monthly Salary", categoryKeyword: "Salary" },
+    { label: "📈 Bonus", amount: 5000, description: "Performance Bonus", categoryKeyword: "Bonus" },
+    { label: "🤝 Freelance", amount: 10000, description: "Freelance Work", categoryKeyword: "Freelance" },
+    { label: "🎁 Gift", amount: 1000, description: "Gift money", categoryKeyword: "Gift" }
+  ]
+};
 
 function AddTransactionForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
+  const { radius } = useThemeStore();
+  const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
 
   // Selected State
   const initialType = (searchParams.get('type') as "expense" | "income") || "expense";
@@ -55,6 +75,31 @@ function AddTransactionForm() {
       startVoiceRecognition();
     }
   }, [searchParams]);
+
+  const handleApplyTemplate = (clip: { label: string; amount: number; description: string; categoryKeyword: string }) => {
+    setAmount(clip.amount.toString());
+    setDescription(clip.description);
+    
+    // Find matching category
+    const match = (categories || []).find((c: any) => 
+      c.name.toLowerCase().includes(clip.categoryKeyword.toLowerCase()) ||
+      clip.categoryKeyword.toLowerCase().includes(c.name.toLowerCase())
+    );
+    
+    if (match) {
+      setCategoryId(match._id);
+      if (match.subcategories && match.subcategories.length > 0) {
+        setSubcategoryId(match.subcategories[0]._id);
+      } else {
+        setSubcategoryId("");
+      }
+    } else {
+      setCategoryId("");
+      setSubcategoryId("");
+    }
+    
+    toast.success(`Applied template: ${clip.description} - ₹${clip.amount}`);
+  };
 
   const handleParseText = async (text: string, source: "voice" | "message" = "message") => {
     try {
@@ -417,17 +462,17 @@ function AddTransactionForm() {
       <header className="flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="w-12 h-12 bg-card rounded-full flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors shrink-0"
+          className={`w-12 h-12 bg-card flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors shrink-0 ${pillRoundness}`}
         >
           <ArrowLeft className="text-foreground w-5 h-5" />
         </Link>
 
         {/* Type Toggle */}
-        <div className="flex p-1 bg-card/50 rounded-full flex-1">
+        <div className={`flex p-1 bg-card/50 flex-1 ${pillRoundness}`}>
           <button
             type="button"
             onClick={() => { setType('expense'); setCategoryId(""); }}
-            className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all duration-300 ${type === 'expense' ? 'bg-card text-destructive shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 py-2.5 px-4 text-sm font-medium transition-all duration-300 ${pillRoundness} ${type === 'expense' ? 'bg-card text-destructive shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
           >
             Expense
@@ -435,13 +480,28 @@ function AddTransactionForm() {
           <button
             type="button"
             onClick={() => { setType('income'); setCategoryId(""); }}
-            className={`flex-1 py-2.5 px-4 rounded-full text-sm font-medium transition-all duration-300 ${type === 'income' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            className={`flex-1 py-2.5 px-4 text-sm font-medium transition-all duration-300 ${pillRoundness} ${type === 'income' ? 'bg-card text-primary shadow-sm' : 'text-muted-foreground hover:text-foreground'
               }`}
           >
             Income
           </button>
         </div>
       </header>
+
+      {/* Quick-Add Chips Carousel */}
+      <div className="flex items-center gap-2 overflow-x-auto py-2 -mx-6 px-6 no-scrollbar scroll-smooth">
+         {(type === 'expense' ? TEMPLATES.expense : TEMPLATES.income).map((clip) => (
+            <button
+              key={clip.label}
+              type="button"
+              onClick={() => handleApplyTemplate(clip)}
+              className={`bg-card/50 border border-border/50 hover:border-primary/50 hover:bg-accent px-3.5 py-1.5 text-xs text-foreground font-medium flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95 shadow-sm ${pillRoundness}`}
+            >
+              <span>{clip.label}</span>
+              <span className="text-[10px] text-muted-foreground font-bold">₹{clip.amount}</span>
+            </button>
+         ))}
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
 
@@ -459,7 +519,7 @@ function AddTransactionForm() {
           <button
             type="button"
             onClick={isRecording ? stopVoiceRecognition : startVoiceRecognition}
-            className={`relative mt-3 h-12 rounded-full flex items-center justify-center border transition-all duration-500 ease-in-out active:scale-95 ${
+            className={`relative mt-3 h-12 flex items-center justify-center border transition-all duration-500 ease-in-out active:scale-95 ${pillRoundness} ${
               isRecording 
                 ? "w-48 bg-destructive/10 border-destructive/30 text-destructive shadow-[0_0_25px_rgba(239,68,68,0.2)]" 
                 : isParsing 
@@ -535,7 +595,7 @@ function AddTransactionForm() {
                               style={categoryId === c._id ? { borderColor: c.color, backgroundColor: `${c.color}15` } : {}}
                             >
                               <div 
-                                className="w-10 h-10 rounded-full flex items-center justify-center mb-1.5 transition-all duration-300"
+                                className={`w-10 h-10 flex items-center justify-center mb-1.5 transition-all duration-300 ${pillRoundness}`}
                                 style={{ 
                                   backgroundColor: categoryId === c._id ? `${c.color}22` : `${c.color}0d`,
                                 }}
@@ -567,7 +627,7 @@ function AddTransactionForm() {
                                   key={sub._id}
                                   type="button"
                                   onClick={() => setSubcategoryId(sub._id)}
-                                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                                  className={`px-3.5 py-1.5 text-xs font-bold transition-all border ${pillRoundness} ${
                                     subcategoryId === sub._id 
                                       ? 'bg-primary text-black border-primary' 
                                       : 'bg-background dark:bg-zinc-800/60 text-muted-foreground hover:text-foreground border-border/40'
@@ -630,7 +690,7 @@ function AddTransactionForm() {
                       setPaymentMode(mode.name);
                       setSubPaymentMode("");
                     }}
-                    className={`px-4 py-2 rounded-full text-[11px] font-bold uppercase transition-all cursor-pointer ${
+                    className={`px-4 py-2 text-[11px] font-bold uppercase transition-all cursor-pointer ${pillRoundness} ${
                       paymentMode === mode.name 
                         ? 'bg-foreground text-background shadow-sm' 
                         : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -654,7 +714,7 @@ function AddTransactionForm() {
                       key={sub._id}
                       type="button"
                       onClick={() => setSubPaymentMode(sub.name)}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 text-[10px] font-bold uppercase transition-all cursor-pointer ${pillRoundness} ${
                         subPaymentMode === sub.name 
                           ? 'bg-primary text-black shadow-sm' 
                           : 'bg-accent/50 text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -670,7 +730,7 @@ function AddTransactionForm() {
 
           <div className="group relative pt-4 pb-2 border-t border-border mt-6">
             <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <div className={`p-2 rounded-full ${isFetchingLocation ? 'bg-primary/20 text-primary animate-pulse' : locationObj ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground'}`}>
+              <div className={`p-2 ${pillRoundness} ${isFetchingLocation ? 'bg-primary/20 text-primary animate-pulse' : locationObj ? 'bg-primary/10 text-primary' : 'bg-accent text-muted-foreground'}`}>
                 {isFetchingLocation ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
               </div>
               <div className="flex-1">

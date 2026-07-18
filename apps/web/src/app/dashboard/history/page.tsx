@@ -38,6 +38,8 @@ function groupByDate(transactions: any[]) {
 export default function HistoryPage() {
   const queryClient = useQueryClient();
   const router = useRouter();
+  const { radius } = useThemeStore();
+  const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
   
   const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'quarter' | 'custom' | 'exact_date'>('all');
@@ -469,7 +471,7 @@ export default function HistoryPage() {
           <button
             key={f}
             onClick={() => setTimeFilter(f)}
-            className={`px-3 py-1.5 rounded-full border text-[10px] font-bold uppercase transition-all shrink-0 ${timeFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-card text-muted-foreground/70 border-border hover:bg-accent'}`}
+            className={`px-3 py-1.5 border text-[10px] font-bold uppercase transition-all shrink-0 ${pillRoundness} ${timeFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-card text-muted-foreground/70 border-border hover:bg-accent'}`}
           >
             {f === 'all' ? 'All Time' : f === 'week' ? 'Past 7 Days' : f === 'month' ? 'This Month' : f === 'quarter' ? 'Past 3 Months' : 'Custom'}
           </button>

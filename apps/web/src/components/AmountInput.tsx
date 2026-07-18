@@ -11,7 +11,12 @@ interface AmountInputProps {
 
 export default function AmountInput({ value, onChange, autoFocus = false }: AmountInputProps) {
   const [showKeypad, setShowKeypad] = useState(autoFocus);
+  const [isMounted, setIsMounted] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (showKeypad && inputRef.current) {
@@ -73,7 +78,7 @@ export default function AmountInput({ value, onChange, autoFocus = false }: Amou
       )}
 
       {/* Custom Keypad Overlay */}
-      {showKeypad && (
+      {isMounted && showKeypad && (
         <>
           <div className="fixed inset-0 z-[60] bg-transparent md:hidden" onClick={() => setShowKeypad(false)} />
           <div className="fixed inset-x-0 bottom-0 z-[70] bg-card border-t border-border shadow-[0_-20px_40px_rgba(0,0,0,0.2)] p-4 pb-8 animate-in slide-in-from-bottom duration-300 rounded-t-[2.5rem]">

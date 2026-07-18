@@ -25,7 +25,7 @@ export interface OfflineMutation {
 
 // Map endpoints to cache keys
 export const getCacheKey = (url: string): string | null => {
-  if (url.startsWith('/transactions/summary')) return 'cached_summary';
+  if (url.startsWith('/transactions/dashboard')) return 'cached_summary';
   if (url.startsWith('/transactions')) return 'cached_transactions';
   if (url.startsWith('/categories')) return 'cached_categories';
   if (url.startsWith('/payment-modes')) return 'cached_payment_modes';

@@ -1,13 +1,15 @@
 'use client';
 
 import { ArrowUpRight, ArrowDownRight, Wallet, Loader2, ChevronRight, TrendingDown, TrendingUp, Plus, PieChart, LayoutList, MapPin, Settings, CloudOff } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import Link from "next/link";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useThemeStore } from "@/stores/useThemeStore";
 import { useRouter } from "next/navigation";
 import { getTodayIST, formatDateIST } from "@/lib/dateUtils";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 type DashboardData = {
   balance: number;
@@ -16,17 +18,21 @@ type DashboardData = {
   recentTransactions: any[];
 };
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 17) return "Good afternoon";
-  return "Good evening";
-}
+const TEMPLATES = [
+  { label: "☕ Coffee", amount: 50, description: "Coffee", type: "expense", categoryKeyword: "Food" },
+  { label: "🚇 Metro", amount: 30, description: "Metro travel", type: "expense", categoryKeyword: "Transport" },
+  { label: "🛒 Groceries", amount: 500, description: "Groceries", type: "expense", categoryKeyword: "Groceries" },
+  { label: "🍔 Food", amount: 200, description: "Lunch/Dinner", type: "expense", categoryKeyword: "Food" },
+  { label: "🍿 Movie", amount: 350, description: "Movie ticket", type: "expense", categoryKeyword: "Entertainment" },
+  { label: "⛽ Fuel", amount: 1000, description: "Fuel refuel", type: "expense", categoryKeyword: "Transport" }
+];
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { radius } = useThemeStore();
+  const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
   const [isMounted, setIsMounted] = useState(false);
 
   const { data, isLoading, error } = useQuery<DashboardData>({
@@ -36,6 +42,51 @@ export default function DashboardPage() {
       return response.data;
     }
   });
+
+  const { data: categories } = useQuery<any[]>({
+    queryKey: ['categories'],
+    queryFn: async () => {
+      const response = await api.get('/categories');
+      return response.data || [];
+    }
+  });
+
+  const quickAddMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      const response = await api.post('/transactions', payload);
+      return response.data;
+    },
+    onSuccess: (data: any) => {
+      toast.success(`Logged: ${data.description} - ₹${data.amount}`);
+      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || "Failed to log transaction");
+    }
+  });
+
+  const handleQuickLog = (clip: { label: string; amount: number; description: string; type: string; categoryKeyword: string }) => {
+    const match = (categories || []).find((c: any) => 
+      c.name.toLowerCase().includes(clip.categoryKeyword.toLowerCase()) ||
+      clip.categoryKeyword.toLowerCase().includes(c.name.toLowerCase())
+    );
+
+    if (!match) {
+      toast.error(`Please configure category "${clip.categoryKeyword}" first.`);
+      return;
+    }
+
+    quickAddMutation.mutate({
+      type: clip.type,
+      amount: clip.amount,
+      description: clip.description,
+      date: new Date().toISOString(),
+      category: match._id,
+      subcategory: match.subcategories && match.subcategories.length > 0 ? match.subcategories[0]._id : undefined,
+      paymentMode: "UPI"
+    });
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -147,59 +198,73 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
-      {/* Header Greeting */}
-      <header className="flex items-center justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Status: Online</p>
-          <h1 className="font-heading text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-            {getGreeting()}, <span className="text-primary">{firstName}</span>
-          </h1>
-        </div>
-      </header>
-
       {/* Main Stats Card */}
-      <section className="relative overflow-hidden rounded-[2.5rem] bg-[#0c0c0e] dark:bg-card p-8 text-white border border-white/5 shadow-2xl">
-        <div className="absolute top-0 right-0 p-8 opacity-10">
+      <section className="relative overflow-hidden py-2 px-1 text-foreground dark:text-white">
+        <div className="absolute top-0 right-0 p-2 opacity-5 text-foreground dark:text-white">
           <Wallet className="w-32 h-32 rotate-12" />
         </div>
         
         <div className="relative space-y-6">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-white/40 mb-3 ml-1">Total Liquidity</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground dark:text-white/40 mb-3 ml-1">Total Liquidity</p>
             <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-light text-white/50">₹</span>
-              <h2 className="text-5xl md:text-6xl font-heading font-black tracking-tighter">
+              <span className="text-2xl font-light text-muted-foreground/60 dark:text-white/50">₹</span>
+              <h2 className="text-5xl md:text-6xl font-heading font-black tracking-tighter text-foreground dark:text-white">
                 {balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
               </h2>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 pt-4">
-            <div className="bg-white/[0.04] rounded-3xl p-5 border border-white/5 hover:bg-white/[0.08] transition-colors group">
+            <div className="bg-muted/40 border border-border/50 dark:bg-white/[0.04] dark:border-white/5 rounded-3xl p-5 hover:bg-muted/60 dark:hover:bg-white/[0.08] transition-colors group">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 rounded-xl bg-primary/20 text-primary group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-xl bg-primary/10 text-primary dark:bg-primary/20 group-hover:scale-110 transition-transform">
                   <ArrowDownRight className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Inflow</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground dark:text-white/30">Inflow</span>
               </div>
               <p className="text-lg font-heading font-bold tracking-tight text-primary">
                 ₹{income.toLocaleString('en-IN')}
               </p>
             </div>
-            <div className="bg-white/[0.04] rounded-3xl p-5 border border-white/5 hover:bg-white/[0.08] transition-colors group">
+            <div className="bg-muted/40 border border-border/50 dark:bg-white/[0.04] dark:border-white/5 rounded-3xl p-5 hover:bg-muted/60 dark:hover:bg-white/[0.08] transition-colors group">
               <div className="flex items-center gap-2 mb-3">
-                <div className="p-2 rounded-xl bg-destructive/20 text-destructive group-hover:scale-110 transition-transform">
+                <div className="p-2 rounded-xl bg-destructive/10 text-destructive dark:bg-destructive/20 group-hover:scale-110 transition-transform">
                   <ArrowUpRight className="w-4 h-4" />
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Outflow</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground dark:text-white/30">Outflow</span>
               </div>
-              <p className="text-lg font-heading font-bold tracking-tight text-white">
+              <p className="text-lg font-heading font-bold tracking-tight text-foreground dark:text-white">
                 ₹{expense.toLocaleString('en-IN')}
               </p>
             </div>
           </div>
         </div>
       </section>
+
+      {/* Quick-Add Carousel */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="font-heading text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Log Expense</h3>
+          {quickAddMutation.isPending && (
+            <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
+          )}
+        </div>
+        <div className="flex items-center gap-2 overflow-x-auto py-1 -mx-6 px-6 no-scrollbar scroll-smooth">
+          {TEMPLATES.map((clip) => (
+            <button
+              key={clip.label}
+              type="button"
+              disabled={quickAddMutation.isPending}
+              onClick={() => handleQuickLog(clip)}
+              className={`bg-card border border-border/50 hover:border-primary/50 hover:bg-accent px-3.5 py-1.5 text-xs text-foreground font-medium flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-sm ${pillRoundness}`}
+            >
+              <span>{clip.label}</span>
+              <span className="text-[10px] text-muted-foreground font-bold">₹{clip.amount}</span>
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Action Hub */}
       <div className="grid grid-cols-3 gap-3">

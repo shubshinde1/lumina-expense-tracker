@@ -49,10 +49,17 @@ const originalPost = api.post;
 const originalPut = api.put;
 const originalDelete = api.delete;
 
+const triggerOfflineEvent = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('offline-interaction'));
+  }
+};
+
 api.get = async function(url: string, config?: any) {
   const isSingleTxFetch = url.match(/^\/transactions\/([a-f0-9]{24}|temp_\d+)$/i);
 
   if (typeof window !== 'undefined' && !navigator.onLine) {
+    triggerOfflineEvent();
     const key = getCacheKey(url);
     if (key) {
       const cached = localStorage.getItem(key);
@@ -78,7 +85,7 @@ api.get = async function(url: string, config?: any) {
                               url.startsWith('/transactions?') ||
                               url === '/categories' || 
                               url === '/payment-modes' || 
-                              url === '/transactions/summary';
+                              url === '/transactions/dashboard';
 
       if (key && res.data && isIndexEndpoint) {
         localStorage.setItem(key, JSON.stringify(res.data));
@@ -87,6 +94,7 @@ api.get = async function(url: string, config?: any) {
     return res;
   } catch (err: any) {
     if (typeof window !== 'undefined' && (!navigator.onLine || !err.response)) {
+      triggerOfflineEvent();
       const key = getCacheKey(url);
       if (key) {
         const cached = localStorage.getItem(key);
@@ -109,6 +117,7 @@ api.get = async function(url: string, config?: any) {
 
 api.post = async function(url: string, data?: any, config?: any) {
   if (typeof window !== 'undefined' && !navigator.onLine) {
+    triggerOfflineEvent();
     const tempId = 'temp_' + Date.now();
     const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
     queue.push({
@@ -127,6 +136,7 @@ api.post = async function(url: string, data?: any, config?: any) {
     return await originalPost.call(api, url, data, config);
   } catch (err: any) {
     if (typeof window !== 'undefined' && !err.response) {
+      triggerOfflineEvent();
       const tempId = 'temp_' + Date.now();
       const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
       queue.push({
@@ -146,6 +156,7 @@ api.post = async function(url: string, data?: any, config?: any) {
 
 api.put = async function(url: string, data?: any, config?: any) {
   if (typeof window !== 'undefined' && !navigator.onLine) {
+    triggerOfflineEvent();
     const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
     queue.push({
       id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -162,6 +173,7 @@ api.put = async function(url: string, data?: any, config?: any) {
     return await originalPut.call(api, url, data, config);
   } catch (err: any) {
     if (typeof window !== 'undefined' && !err.response) {
+      triggerOfflineEvent();
       const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
       queue.push({
         id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -179,6 +191,7 @@ api.put = async function(url: string, data?: any, config?: any) {
 
 api.delete = async function(url: string, config?: any) {
   if (typeof window !== 'undefined' && !navigator.onLine) {
+    triggerOfflineEvent();
     const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
     queue.push({
       id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -195,6 +208,7 @@ api.delete = async function(url: string, config?: any) {
     return await originalDelete.call(api, url, config);
   } catch (err: any) {
     if (typeof window !== 'undefined' && !err.response) {
+      triggerOfflineEvent();
       const queue = JSON.parse(localStorage.getItem('offline_mutations_queue') || '[]');
       queue.push({
         id: 'mut_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),

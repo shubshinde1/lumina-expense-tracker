@@ -1,5 +1,5 @@
 "use client";
-import { Users, LayoutDashboard, LogOut, ReceiptText, Megaphone, X } from "lucide-react";
+import { Users, LayoutDashboard, LogOut, ReceiptText, Megaphone, X, Cpu } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -17,6 +17,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean, onClose
     { label: "Users", href: "/dashboard/users", icon: Users },
     { label: "Transactions", href: "/dashboard/transactions", icon: ReceiptText },
     { label: "Broadcast", href: "/dashboard/broadcast", icon: Megaphone },
+    { label: "System Design", href: "/dashboard/system-design", icon: Cpu },
   ];
 
   return (

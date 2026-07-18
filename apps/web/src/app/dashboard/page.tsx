@@ -234,7 +234,7 @@ export default function DashboardPage() {
                 </div>
                 <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground dark:text-white/30">Outflow</span>
               </div>
-              <p className="text-lg font-heading font-bold tracking-tight text-foreground dark:text-white">
+              <p className="text-lg font-heading font-bold tracking-tight text-destructive">
                 ₹{expense.toLocaleString('en-IN')}
               </p>
             </div>

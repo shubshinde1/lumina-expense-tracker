@@ -180,7 +180,7 @@ function EditContent() {
         </Link>
 
         {/* Type Toggle */}
-        <div className={`flex p-1 bg-card/50 flex-1 ${pillRoundness}`}>
+        <div className={`flex p-1 bg-muted flex-1 ${pillRoundness} border border-border/20`}>
           <button
             type="button"
             onClick={() => { setType('expense'); setCategoryId(""); }}
@@ -198,10 +198,10 @@ function EditContent() {
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-5">
 
         <div className="group relative">
-          <label className="block font-medium text-xs text-muted-foreground mb-3 tracking-widest uppercase text-center">Amount</label>
+          <label className="block font-medium text-xs text-muted-foreground mb-1.5 tracking-widest uppercase text-center">Amount</label>
           <AmountInput value={amount} onChange={setAmount} />
         </div>
 

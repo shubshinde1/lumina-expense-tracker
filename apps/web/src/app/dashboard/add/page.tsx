@@ -468,7 +468,7 @@ function AddTransactionForm() {
         </Link>
 
         {/* Type Toggle */}
-        <div className={`flex p-1 bg-card/50 flex-1 ${pillRoundness}`}>
+        <div className={`flex p-1 bg-muted flex-1 ${pillRoundness} border border-border/20`}>
           <button
             type="button"
             onClick={() => { setType('expense'); setCategoryId(""); }}
@@ -503,11 +503,11 @@ function AddTransactionForm() {
          ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-8">
+      <form onSubmit={handleSubmit} className="space-y-5">
 
         {/* Amount with Voice AI Mic */}
         <div className="group relative flex flex-col items-center">
-          <label className="block font-medium text-xs text-muted-foreground mb-3 uppercase text-center">
+          <label className="block font-medium text-xs text-muted-foreground mb-1.5 uppercase text-center">
             Amount
           </label>
           <AmountInput 
@@ -519,7 +519,7 @@ function AddTransactionForm() {
           <button
             type="button"
             onClick={isRecording ? stopVoiceRecognition : startVoiceRecognition}
-            className={`relative mt-3 h-12 flex items-center justify-center border transition-all duration-500 ease-in-out active:scale-95 ${pillRoundness} ${
+            className={`relative mt-1.5 h-12 flex items-center justify-center border transition-all duration-500 ease-in-out active:scale-95 ${pillRoundness} ${
               isRecording 
                 ? "w-48 bg-destructive/10 border-destructive/30 text-destructive shadow-[0_0_25px_rgba(239,68,68,0.2)]" 
                 : isParsing 

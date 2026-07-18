@@ -1,21 +1,21 @@
 import { create } from 'zustand';
 
 interface ThemeState {
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
   accentColor: string; // Hex color for primary
   radius: number; // Border radius in rem
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setAccentColor: (color: string) => void;
   setRadius: (radius: number) => void;
 }
 
 const getInitialState = () => {
   if (typeof window === 'undefined') {
-    return { theme: 'dark' as const, accentColor: '#6bfe9c', radius: 1 };
+    return { theme: 'system' as const, accentColor: '#6bfe9c', radius: 1 };
   }
   const stored = localStorage.getItem('lumina_theme');
   if (stored) return JSON.parse(stored);
-  return { theme: 'dark' as const, accentColor: '#6bfe9c', radius: 1 };
+  return { theme: 'system' as const, accentColor: '#6bfe9c', radius: 1 };
 };
 
 export const useThemeStore = create<ThemeState>((set) => ({

@@ -15,7 +15,8 @@ import {
   User,
   Sliders,
   Landmark,
-  Cpu
+  Cpu,
+  Laptop
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
@@ -161,31 +162,43 @@ export default function SettingsPage() {
           <div className="px-5 py-4 flex items-center justify-between gap-4">
             <div className="flex items-center gap-3.5 min-w-0">
               <div className={`w-8 h-8 flex items-center justify-center bg-purple-500/10 text-purple-400 shrink-0 ${getToggleButtonRadiusClass()}`}>
-                {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+                {theme === 'dark' ? <Moon className="w-4 h-4" /> : theme === 'light' ? <Sun className="w-4 h-4" /> : <Laptop className="w-4 h-4" />}
               </div>
               <div className="text-left min-w-0">
                 <p className="font-bold text-sm text-zinc-900 dark:text-white">Theme Base</p>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Choose Dark or Light base mode</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 uppercase mt-0.5 truncate">Choose Dark, Light or System mode</p>
               </div>
             </div>
             <div className={`flex bg-accent p-0.5 border border-border shrink-0 ${getToggleContainerRadiusClass()}`}>
               <button
-                onClick={() => setTheme('dark')}
-                className={`px-3 py-1.5 text-xs font-bold transition-all active:scale-95 cursor-pointer ${getToggleButtonRadiusClass()} ${theme === 'dark'
-                    ? 'bg-card text-zinc-900 dark:text-white shadow-sm'
-                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650 dark:hover:text-zinc-350'
+                onClick={() => setTheme('light')}
+                className={`px-3 py-1.5 transition-all active:scale-95 cursor-pointer ${getToggleButtonRadiusClass()} ${theme === 'light'
+                    ? 'bg-card text-yellow-500 shadow-sm font-bold'
+                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400'
                   }`}
+                title="Light Mode"
               >
-                Dark
+                <Sun className="w-4 h-4" style={{ fill: theme === 'light' ? 'rgba(234, 179, 8, 0.15)' : 'none' }} />
               </button>
               <button
-                onClick={() => setTheme('light')}
-                className={`px-3 py-1.5 text-xs font-bold transition-all active:scale-95 cursor-pointer ${getToggleButtonRadiusClass()} ${theme === 'light'
-                    ? 'bg-card text-zinc-900 dark:text-white shadow-sm'
-                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-650 dark:hover:text-zinc-350'
+                onClick={() => setTheme('dark')}
+                className={`px-3 py-1.5 transition-all active:scale-95 cursor-pointer ${getToggleButtonRadiusClass()} ${theme === 'dark'
+                    ? 'bg-card text-green-500 shadow-sm font-bold'
+                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400'
                   }`}
+                title="Dark Mode"
               >
-                Light
+                <Moon className="w-4 h-4" style={{ fill: theme === 'dark' ? 'rgba(34, 197, 94, 0.15)' : 'none' }} />
+              </button>
+              <button
+                onClick={() => setTheme('system')}
+                className={`px-3 py-1.5 transition-all active:scale-95 cursor-pointer ${getToggleButtonRadiusClass()} ${theme === 'system'
+                    ? 'bg-card text-blue-500 shadow-sm font-bold'
+                    : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-400'
+                  }`}
+                title="System Mode"
+              >
+                <Laptop className="w-4 h-4" style={{ fill: theme === 'system' ? 'rgba(59, 130, 246, 0.15)' : 'none' }} />
               </button>
             </div>
           </div>

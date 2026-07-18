@@ -57,7 +57,7 @@ export default function AmountInput({ value, onChange, autoFocus = false }: Amou
   };
 
   return (
-    <div className="w-full text-center transition-all duration-300 py-4 cursor-text">
+    <div className="w-full text-center transition-all duration-300 py-1 cursor-text">
       <input
         ref={inputRef}
         type="text"
@@ -81,10 +81,10 @@ export default function AmountInput({ value, onChange, autoFocus = false }: Amou
       {isMounted && showKeypad && (
         <>
           <div className="fixed inset-0 z-[60] bg-transparent md:hidden" onClick={() => setShowKeypad(false)} />
-          <div className="fixed inset-x-0 bottom-0 z-[70] bg-card border-t border-border shadow-[0_-20px_40px_rgba(0,0,0,0.2)] p-4 pb-8 animate-in slide-in-from-bottom duration-300 rounded-t-[2.5rem]">
+          <div className="fixed inset-x-0 bottom-0 z-[70] bg-muted border-t border-border/40 shadow-[0_-15px_35px_rgba(0,0,0,0.3)] p-4 pb-8 animate-in slide-in-from-bottom duration-300 rounded-t-[2.5rem]">
             <div className="flex justify-between items-center mb-4 px-4 max-w-md mx-auto">
-              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Amount Input</span>
-              <button type="button" onClick={() => setShowKeypad(false)} className="text-primary font-bold text-sm bg-primary/10 px-3 py-1 rounded-full">DONE</button>
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/80">Amount Input</span>
+              <button type="button" onClick={() => setShowKeypad(false)} className="text-primary font-black text-xs uppercase tracking-wider bg-primary/10 px-4 py-1.5 rounded-full hover:bg-primary/20 transition-all cursor-pointer">DONE</button>
             </div>
             <div className="grid grid-cols-3 gap-3 max-w-sm mx-auto">
               <Key onClick={() => handleKeyPress('1')}>1</Key>
@@ -120,7 +120,7 @@ function Key({ children, onClick, className = "" }: any) {
       type="button"
       onPointerDown={(e) => e.preventDefault()}
       onClick={(e) => { e.preventDefault(); onClick(); }}
-      className={`h-16 flex items-center justify-center text-3xl font-heading font-bold rounded-2xl bg-card border border-border shadow-sm active:scale-95 active:bg-accent transition-all ${className}`}
+      className={`h-16 flex items-center justify-center text-3xl font-heading font-black rounded-2xl bg-card border border-border/80 dark:border-white/5 text-foreground shadow-[0_2px_4px_rgba(0,0,0,0.04)] active:scale-95 active:bg-accent transition-all duration-100 ${className}`}
     >
       {children}
     </button>

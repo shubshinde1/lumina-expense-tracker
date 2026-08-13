@@ -1,8 +1,18 @@
 import axios from 'axios';
 
+const getBaseURL = () => {
+  if (typeof window !== 'undefined') {
+    const customUrl = localStorage.getItem('custom_api_url');
+    if (customUrl) {
+      return customUrl;
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+};
+
 // Create a raw axios instance for sync requests to avoid loops
 const rawApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api',
+  baseURL: getBaseURL(),
 });
 
 rawApi.interceptors.request.use((config) => {

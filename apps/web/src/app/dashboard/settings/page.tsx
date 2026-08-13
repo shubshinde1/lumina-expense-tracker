@@ -50,6 +50,7 @@ export default function SettingsPage() {
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [sessions, setSessions] = useState<any[]>([]);
   const [fetchingSessions, setFetchingSessions] = useState(false);
+  const [customApiUrl, setCustomApiUrl] = useState("");
 
   const fetchSessions = async () => {
     setFetchingSessions(true);
@@ -107,6 +108,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== 'undefined') {
+      setCustomApiUrl(localStorage.getItem('custom_api_url') || "");
+    }
   }, []);
 
   // Sync state with store if user changes
@@ -150,6 +154,42 @@ export default function SettingsPage() {
     } catch (err) {
       console.error("Failed to update user settings:", err);
       setSmsParserActive(!checked);
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
+  const handleSaveCustomApiUrl = async () => {
+    setUpdatingSettings(true);
+    try {
+      const cleanUrl = customApiUrl.trim();
+      if (cleanUrl) {
+        new URL(cleanUrl); 
+        localStorage.setItem('custom_api_url', cleanUrl);
+      } else {
+        localStorage.removeItem('custom_api_url');
+      }
+
+      const { Capacitor, registerPlugin } = await import("@capacitor/core");
+      if (Capacitor.isNativePlatform() && user) {
+        const LuminaBridge = registerPlugin<any>('LuminaBridge');
+        
+        const getResolvedUrl = () => {
+          if (cleanUrl) return cleanUrl;
+          if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
+          return 'https://lumina-expense-tracker-85ym.vercel.app/api';
+        };
+
+        await LuminaBridge.saveUserSession({
+          token: user.token,
+          email: user.email,
+          apiUrl: getResolvedUrl()
+        });
+      }
+
+      window.location.reload();
+    } catch (err) {
+      alert("Please enter a valid absolute URL (e.g., http://192.168.1.5:5001/api)");
     } finally {
       setUpdatingSettings(false);
     }
@@ -396,6 +436,41 @@ export default function SettingsPage() {
             </label>
           </div>
 
+        </div>
+      </div>
+
+      {/* Section: Developer Settings */}
+      <div className="space-y-2">
+        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Developer Settings</span>
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 p-[15px] space-y-3.5 ${getCardRadiusClass()}`}>
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+              <Cpu className="w-4.5 h-4.5" />
+            </div>
+            <div className="text-left min-w-0 flex-1">
+              <p className="font-bold text-sm text-zinc-900 dark:text-white">Custom API Base URL</p>
+              <p className="text-[10px] text-zinc-500 dark:text-zinc-450 mt-0.5 leading-normal">
+                Point this APK to your local machine (e.g. <code className="text-primary font-bold">http://192.168.1.5:5001/api</code>) to sync with your local database. Leave empty to use default production endpoints.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="http://192.168.X.X:5001/api"
+              value={customApiUrl}
+              onChange={(e) => setCustomApiUrl(e.target.value)}
+              className="flex-1 bg-accent/30 dark:bg-zinc-900 border border-border rounded-xl px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/30 text-foreground"
+            />
+            <button
+              onClick={handleSaveCustomApiUrl}
+              disabled={updatingSettings}
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-md ${getToggleButtonRadiusClass()}`}
+            >
+              Save & Sync
+            </button>
+          </div>
         </div>
       </div>
 

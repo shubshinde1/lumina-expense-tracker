@@ -1,4 +1,5 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
 
 android {
     namespace = "com.lumina.tracker"
@@ -40,6 +41,11 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
+    
+    // Kotlin & Session parsing pipelines dependencies
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:2.1.0"
+    implementation "androidx.work:work-runtime-ktx:2.9.0"
+    implementation "androidx.security:security-crypto:1.1.0-alpha06"
 }
 
 apply from: 'capacitor.build.gradle'

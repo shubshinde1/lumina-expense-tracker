@@ -458,13 +458,15 @@ export const parseNaturalLanguage = async (req: AuthRequest, res: Response): Pro
 
 export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { smsText } = req.body;
+    const { smsText, smsHash, parsedTransaction } = req.body;
+    const actualSmsText = smsText || req.body.rawSms;
     console.log(`\n[SMS-READER DEBUG] === Incoming Auto-Log Request ===`);
-    console.log(`[SMS-READER DEBUG] SMS Body: "${smsText}"`);
+    console.log(`[SMS-READER DEBUG] SMS Body: "${actualSmsText}"`);
+    console.log(`[SMS-READER DEBUG] SMS Hash: "${smsHash}"`);
     console.log(`[SMS-READER DEBUG] User ID:  ${req.user._id} (${req.user.email})`);
 
-    if (!smsText) {
-      console.log(`[SMS-READER DEBUG] Failed: Missing smsText parameter.`);
+    if (!actualSmsText) {
+      console.log(`[SMS-READER DEBUG] Failed: Missing SMS text.`);
       res.status(400).json({ message: "SMS text is required" });
       return;
     }
@@ -477,13 +479,22 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
 
     const userId = req.user._id;
 
-    // Check for duplicate SMS logs to prevent double logging
+    // Check for duplicate SMS logs using hash or raw SMS text
     console.log(`[SMS-READER DEBUG] Checking database for duplicate logs...`);
-    const existingNotif = await Notification.findOne({
-      user: userId,
-      type: "transaction",
-      "metadata.smsText": smsText
-    });
+    let existingNotif;
+    if (smsHash) {
+      existingNotif = await Notification.findOne({
+        user: userId,
+        type: "transaction",
+        "metadata.smsHash": smsHash
+      });
+    } else {
+      existingNotif = await Notification.findOne({
+        user: userId,
+        type: "transaction",
+        "metadata.smsText": actualSmsText
+      });
+    }
     
     if (existingNotif) {
       console.log(`[SMS-READER DEBUG] Duplicate detected! SMS already logged. Notification ID: ${existingNotif._id}`);
@@ -504,9 +515,14 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
       return;
     }
 
-    console.log(`[SMS-READER DEBUG] Forwarding SMS to Gemini NLP parser engine...`);
-    const parsed = await parseTransactionTextHelper(smsText, userId);
-    console.log(`[SMS-READER DEBUG] NLP Parsing Success!`);
+    let parsed;
+    if (parsedTransaction) {
+      console.log(`[SMS-READER DEBUG] Using pre-parsed client transaction details...`);
+      parsed = parsedTransaction;
+    } else {
+      console.log(`[SMS-READER DEBUG] Forwarding SMS to Gemini NLP parser engine...`);
+      parsed = await parseTransactionTextHelper(actualSmsText, userId);
+    }
     console.log(`[SMS-READER DEBUG] Extracted details:`, JSON.stringify(parsed, null, 2));
 
     if (parsed.amount <= 0) {
@@ -518,13 +534,13 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
     console.log(`[SMS-READER DEBUG] Creating Transaction record in MongoDB database...`);
     const transaction = await Transaction.create({
       user: userId,
-      type: parsed.type,
+      type: parsed.direction || parsed.type,
       amount: parsed.amount,
-      description: parsed.description,
-      date: new Date(),
+      description: parsed.merchant || parsed.description,
+      date: parsed.timestamp ? new Date(parsed.timestamp) : new Date(),
       category: parsed.category,
       subcategory: parsed.subcategory || undefined,
-      paymentMode: parsed.paymentMode
+      paymentMode: parsed.paymentType || parsed.paymentMode
     });
     console.log(`[SMS-READER DEBUG] Transaction created successfully. ID: ${transaction._id}`);
 
@@ -533,14 +549,15 @@ export const autoLogSmsTransaction = async (req: AuthRequest, res: Response): Pr
     const notification = await Notification.create({
       user: userId,
       title: "Transaction Auto-Logged",
-      message: `Logged ${parsed.type === 'income' ? 'income' : 'spend'} of ₹${parsed.amount} at ${parsed.description} automatically via SMS.`,
+      message: `Logged ${(parsed.direction || parsed.type) === 'income' ? 'income' : 'spend'} of ₹${parsed.amount} at ${parsed.merchant || parsed.description} automatically via SMS.`,
       type: "transaction",
       actionUrl: "/dashboard/history",
       metadata: {
         amount: parsed.amount.toString(),
-        description: parsed.description,
-        type: parsed.type,
-        smsText: smsText,
+        description: parsed.merchant || parsed.description,
+        type: parsed.direction || parsed.type,
+        smsText: actualSmsText,
+        smsHash: smsHash || "",
         transactionId: transaction._id.toString()
       }
     });

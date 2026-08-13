@@ -34,6 +34,8 @@ public class LuminaBridgePlugin extends Plugin {
              .putString("apiUrl", apiUrl)
              .commit();
 
+        SecurePrefs.saveSession(getContext(), token, email, apiUrl);
+
         call.resolve();
     }
 
@@ -46,6 +48,9 @@ public class LuminaBridgePlugin extends Plugin {
              .remove("email")
              .remove("apiUrl")
              .commit();
+
+        SecurePrefs.clearSession(getContext());
+
         call.resolve();
     }
 

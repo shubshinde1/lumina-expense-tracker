@@ -1,0 +1,7 @@
+{
+  "food": ["swiggy", "zomato", "restaurant", "mcdonalds", "starbucks", "pizza", "kfc", "groceries", "supermarket", "instamart", "blinkit", "zepto"],
+  "transport": ["uber", "ola", "rapido", "irctc", "metro", "cab", "taxi", "fuel", "petrol", "shell", "hpcl", "bpcl"],
+  "shopping": ["amazon", "flipkart", "myntra", "meesho", "ajio", "nykaa", "shopping", "retail", "mart"],
+  "bills": ["electricity", "water", "gas", "recharge", "broadband", "jio", "airtel", "vi", "netflix", "spotify", "youtube", "premium"],
+  "uncategorized": []
+}

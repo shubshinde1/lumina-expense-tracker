@@ -1,6 +1,16 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
+const sessionSchema = new mongoose.Schema({
+  _id: { type: String, required: true },
+  deviceType: { type: String, enum: ["Mobile", "Tablet", "Desktop"], default: "Desktop" },
+  browserName: { type: String, default: "Unknown Browser" },
+  os: { type: String, default: "Unknown OS" },
+  ip: { type: String, default: "Unknown IP" },
+  createdAt: { type: Date, default: Date.now },
+  lastUsed: { type: Date, default: Date.now }
+});
+
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -9,6 +19,8 @@ const userSchema = new mongoose.Schema(
     plan: { type: String, enum: ["free", "premium"], default: "free" },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     isSuspended: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0 },
+    sessions: { type: [sessionSchema], default: [] },
     settings: {
       autoOpenKeyboard: { type: Boolean, default: true },
       smsParserActive: { type: Boolean, default: true }

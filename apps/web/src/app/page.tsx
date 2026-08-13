@@ -18,6 +18,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [logoutOthers, setLogoutOthers] = useState(false);
 
   const router = useRouter();
   const { user, setUser } = useAuthStore();
@@ -59,12 +60,13 @@ export default function AuthPage() {
 
   // 5. Reset: Verify OTP & Change Password
   const completeReset = useMutation({
-    mutationFn: async () => await api.post('/auth/reset', { email, otp, newPassword: password }),
+    mutationFn: async () => await api.post('/auth/reset', { email, otp, newPassword: password, logoutOthers }),
     onSuccess: () => { 
       toast.success("Password secured! Please log in."); 
       setActiveTab('login'); 
       setPassword(''); 
       setOtp(''); 
+      setLogoutOthers(false);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || "Password reset failed")
   });
@@ -210,6 +212,25 @@ export default function AuthPage() {
                 />
                 <KeyRound className="absolute right-5 top-1/2 -translate-y-1/2 text-muted-foreground/50 group-focus-within:text-primary transition-colors w-5 h-5" />
               </div>
+            </div>
+          )}
+
+          {activeTab === 'verify-reset' && (
+            <div 
+              className="flex items-center gap-3 select-none cursor-pointer mt-1 bg-accent/20 hover:bg-accent/35 border border-border/30 px-5 py-4 rounded-xl transition-all active:scale-[0.99]" 
+              onClick={() => setLogoutOthers(!logoutOthers)}
+            >
+              <input 
+                type="checkbox"
+                id="logoutOthers"
+                checked={logoutOthers}
+                onChange={(e) => setLogoutOthers(e.target.checked)}
+                className="accent-primary w-4 h-4 cursor-pointer rounded border-border"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <label htmlFor="logoutOthers" className="text-xs text-foreground font-semibold cursor-pointer select-none">
+                Log out from other devices
+              </label>
             </div>
           )}
 

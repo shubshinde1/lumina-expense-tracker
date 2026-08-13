@@ -6,6 +6,7 @@ import { generateToken } from "../utils/generateToken";
 import { sendOtpEmail } from "../utils/mailer";
 import { Notification } from "../models/Notification";
 import { AuthRequest } from "../middleware/auth.middleware";
+import { parseUserAgent } from "../utils/userAgent";
 
 // Random 6 digit generator helper
 const generateOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
@@ -55,6 +56,17 @@ export const registerUser = async (req: Request, res: Response) => {
       ];
       await Category.insertMany(defaultCategories);
 
+      const sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11);
+      const { deviceType, browserName, os } = parseUserAgent(req.headers["user-agent"]);
+      user.sessions.push({
+        _id: sessionId,
+        deviceType,
+        browserName,
+        os,
+        ip: req.ip || "Unknown IP"
+      });
+      await user.save();
+
       res.status(201).json({
         _id: user._id,
         name: user.name,
@@ -62,7 +74,7 @@ export const registerUser = async (req: Request, res: Response) => {
         plan: user.plan,
         role: user.role,
         settings: (user as any).settings || { autoOpenKeyboard: true },
-        token: generateToken(user._id.toString()),
+        token: generateToken(user._id.toString(), sessionId, user.tokenVersion),
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -92,7 +104,7 @@ export const requestResetOtp = async (req: Request, res: Response) => {
 };
 
 export const resetPassword = async (req: Request, res: Response) => {
-  const { email, otp, newPassword } = req.body;
+  const { email, otp, newPassword, logoutOthers } = req.body;
 
   try {
     const validOtp = await Otp.findOne({ email, otp, type: "reset" });
@@ -102,6 +114,10 @@ export const resetPassword = async (req: Request, res: Response) => {
     if (!user) return res.status(404).json({ message: "No user found." });
 
     user.password = newPassword;
+    if (logoutOthers === true) {
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      user.sessions = [] as any;
+    }
     await user.save();
     await Otp.deleteMany({ email, type: "reset" });
 
@@ -121,6 +137,12 @@ export const authUser = async (req: Request, res: Response) => {
         return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
       }
 
+      if (user.sessions && user.sessions.length >= 3) {
+        return res.status(400).json({ 
+          message: "Login restricted: You have reached the maximum limit of 3 active sessions. Please log out from another device." 
+        });
+      }
+
       if (user.role === "admin") {
         await Otp.deleteMany({ email: user.email, type: "login" });
         const code = generateOtpCode();
@@ -134,6 +156,17 @@ export const authUser = async (req: Request, res: Response) => {
         });
       }
 
+      const sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11);
+      const { deviceType, browserName, os } = parseUserAgent(req.headers["user-agent"]);
+      user.sessions.push({
+        _id: sessionId,
+        deviceType,
+        browserName,
+        os,
+        ip: req.ip || "Unknown IP"
+      });
+      await user.save();
+
       res.json({
         _id: user._id,
         name: user.name,
@@ -141,7 +174,7 @@ export const authUser = async (req: Request, res: Response) => {
         plan: user.plan,
         role: user.role,
         settings: (user as any).settings || { autoOpenKeyboard: true },
-        token: generateToken(user._id.toString()),
+        token: generateToken(user._id.toString(), sessionId, user.tokenVersion),
       });
     } else {
       res.status(401).json({ message: "Invalid email or password" });
@@ -172,7 +205,24 @@ export const verifyAdminLoginOtp = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
     }
 
+    if (user.sessions && user.sessions.length >= 3) {
+      return res.status(400).json({ 
+        message: "Login restricted: You have reached the maximum limit of 3 active sessions. Please log out from another device." 
+      });
+    }
+
     await Otp.deleteMany({ email, type: "login" });
+
+    const sessionId = "sess_" + Date.now() + "_" + Math.random().toString(36).substring(2, 11);
+    const { deviceType, browserName, os } = parseUserAgent(req.headers["user-agent"]);
+    user.sessions.push({
+      _id: sessionId,
+      deviceType,
+      browserName,
+      os,
+      ip: req.ip || "Unknown IP"
+    });
+    await user.save();
 
     res.status(200).json({
       _id: user._id,
@@ -181,7 +231,7 @@ export const verifyAdminLoginOtp = async (req: Request, res: Response) => {
       plan: user.plan,
       role: user.role,
       settings: (user as any).settings || { autoOpenKeyboard: true },
-      token: generateToken(user._id.toString()),
+      token: generateToken(user._id.toString(), sessionId, user.tokenVersion),
     });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
@@ -219,6 +269,65 @@ export const updateUserSettings = async (req: AuthRequest, res: Response) => {
       role: user.role,
       settings: (user as any).settings,
     });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getActiveSessions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.user._id).select("sessions");
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const currentSessionId = req.user.currentSessionId;
+    const formattedSessions = user.sessions.map((s: any) => ({
+      _id: s._id,
+      deviceType: s.deviceType,
+      browserName: s.browserName,
+      os: s.os,
+      ip: s.ip,
+      createdAt: s.createdAt,
+      lastUsed: s.lastUsed,
+      isCurrent: s._id === currentSessionId
+    }));
+
+    res.json(formattedSessions);
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteSession = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    user.sessions = user.sessions.filter((s: any) => s._id !== req.params.id) as any;
+    await user.save();
+    res.json({ message: "Device session removed successfully" });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteAllOtherSessions = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      res.status(404).json({ message: "User not found" });
+      return;
+    }
+
+    const currentSessionId = req.user.currentSessionId;
+    user.sessions = user.sessions.filter((s: any) => s._id === currentSessionId) as any;
+    await user.save();
+    res.json({ message: "All other device sessions terminated" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

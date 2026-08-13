@@ -16,7 +16,9 @@ import {
   Sliders,
   Landmark,
   Cpu,
-  Laptop
+  Laptop,
+  Smartphone,
+  Tablet
 } from "lucide-react";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
@@ -46,6 +48,44 @@ export default function SettingsPage() {
   const [autoOpenKeyboard, setAutoOpenKeyboard] = useState(user?.settings?.autoOpenKeyboard ?? true);
   const [smsParserActive, setSmsParserActive] = useState(user?.settings?.smsParserActive ?? true);
   const [updatingSettings, setUpdatingSettings] = useState(false);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [fetchingSessions, setFetchingSessions] = useState(false);
+
+  const fetchSessions = async () => {
+    setFetchingSessions(true);
+    try {
+      const res = await api.get('/auth/sessions');
+      setSessions(res.data || []);
+    } catch (err) {
+      console.error("Failed to load device sessions:", err);
+    } finally {
+      setFetchingSessions(false);
+    }
+  };
+
+  useEffect(() => {
+    if (mounted) {
+      fetchSessions();
+    }
+  }, [mounted]);
+
+  const handleTerminateSession = async (sessionId: string) => {
+    try {
+      await api.delete(`/auth/sessions/${sessionId}`);
+      setSessions(prev => prev.filter(s => s._id !== sessionId));
+    } catch (err) {
+      console.error("Failed to terminate session:", err);
+    }
+  };
+
+  const handleTerminateAllOthers = async () => {
+    try {
+      await api.delete('/auth/sessions');
+      setSessions(prev => prev.filter(s => s.isCurrent));
+    } catch (err) {
+      console.error("Failed to terminate other sessions:", err);
+    }
+  };
 
   const getCardRadiusClass = () => {
     if (radius === 0) return "rounded-none";
@@ -121,6 +161,34 @@ export default function SettingsPage() {
   };
 
   if (!mounted) return null;
+
+  const getFallbackSession = () => {
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isCapacitor = typeof window !== 'undefined' && ((window as any).Capacitor !== undefined || window.location.href.startsWith('capacitor://'));
+    let osName = "Unknown OS";
+    if (typeof navigator !== 'undefined') {
+      const ua = navigator.userAgent;
+      if (ua.includes("Mac")) osName = "macOS";
+      else if (ua.includes("Win")) osName = "Windows";
+      else if (ua.includes("Android")) osName = "Android";
+      else if (ua.includes("iPhone") || ua.includes("iPad")) osName = "iOS";
+      else if (ua.includes("Linux")) osName = "Linux";
+    }
+    return {
+      _id: "current_fallback",
+      deviceType: isMobile ? "Mobile" as const : "Desktop" as const,
+      browserName: isCapacitor ? "Mobile App" : "Web Browser",
+      os: osName,
+      ip: "Local Session",
+      createdAt: new Date().toISOString(),
+      isCurrent: true
+    };
+  };
+
+  const displaySessions = [...sessions];
+  if (!displaySessions.some(s => s.isCurrent)) {
+    displaySessions.unshift(getFallbackSession());
+  }
 
   return (
     <div className="space-y-3 animate-in fade-in duration-500 select-none">
@@ -371,7 +439,61 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Section 4: Session Control */}
+      {/* Section 4: Active Devices & Sessions */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-0.5">
+          <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 mb-1 block">Active Devices & Sessions</span>
+          {displaySessions.filter(s => !s.isCurrent).length > 0 && (
+            <button 
+              onClick={handleTerminateAllOthers}
+              className="text-[10px] uppercase font-bold text-red-500 hover:underline cursor-pointer"
+            >
+              Sign out all other devices
+            </button>
+          )}
+        </div>
+        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 divide-y divide-border/30 text-zinc-900 dark:text-white ${getCardRadiusClass()}`}>
+          {displaySessions.map((s) => (
+            <div key={s._id} className="px-[15px] py-[12px] flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className={`w-9 h-9 flex items-center justify-center bg-zinc-105 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                  {s.deviceType === 'Mobile' ? (
+                    <Smartphone className="w-4.5 h-4.5" />
+                  ) : s.deviceType === 'Tablet' ? (
+                    <Tablet className="w-4.5 h-4.5" />
+                  ) : (
+                    <Laptop className="w-4.5 h-4.5" />
+                  )}
+                </div>
+                <div className="text-left min-w-0">
+                  <p className="font-bold text-sm text-zinc-900 dark:text-white truncate">
+                    {s.browserName} on {s.os}
+                  </p>
+                  <p className="text-[10px] text-zinc-450 dark:text-zinc-500 truncate mt-0.5">
+                    IP: {s.ip} • Logged in: {new Date(s.createdAt || s.lastUsed).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                  </p>
+                </div>
+              </div>
+              {s.isCurrent ? (
+                <span 
+                  className="px-2 py-0.5 text-[9px] uppercase tracking-wider rounded font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-500 shrink-0"
+                >
+                  Active
+                </span>
+              ) : (
+                <button
+                  onClick={() => handleTerminateSession(s._id)}
+                  className="text-[10px] uppercase font-bold text-red-500 hover:text-red-400 shrink-0 transition-colors cursor-pointer"
+                >
+                  Log out
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 5: Session Control */}
       <div className="space-y-2">
         <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Account</span>
         <div className={`bg-card overflow-hidden shadow-sm border border-border/40 text-foreground ${getCardRadiusClass()}`}>

@@ -51,6 +51,8 @@ export default function SettingsPage() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [fetchingSessions, setFetchingSessions] = useState(false);
   const [customApiUrl, setCustomApiUrl] = useState("");
+  const [devModeClicks, setDevModeClicks] = useState(0);
+  const [isDevMode, setIsDevMode] = useState(false);
 
   const fetchSessions = async () => {
     setFetchingSessions(true);
@@ -110,6 +112,7 @@ export default function SettingsPage() {
     setMounted(true);
     if (typeof window !== 'undefined') {
       setCustomApiUrl(localStorage.getItem('custom_api_url') || "");
+      setIsDevMode(localStorage.getItem('dev_mode_enabled') === 'true');
     }
   }, []);
 
@@ -195,6 +198,17 @@ export default function SettingsPage() {
     }
   };
 
+  const handleDevModeClick = () => {
+    if (isDevMode) return;
+    const nextClicks = devModeClicks + 1;
+    setDevModeClicks(nextClicks);
+    if (nextClicks >= 7) {
+      setIsDevMode(true);
+      localStorage.setItem('dev_mode_enabled', 'true');
+      alert("Developer mode unlocked! Custom API configuration is now visible.");
+    }
+  };
+
   const handleLogout = () => {
     logout();
     router.push('/');
@@ -247,7 +261,8 @@ export default function SettingsPage() {
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">{user?.email}</p>
           <div className="mt-2.5">
             <span
-              className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[9px] uppercase tracking-wider rounded-full font-black border"
+              onClick={handleDevModeClick}
+              className="inline-flex items-center gap-1.5 px-3 py-0.5 text-[9px] uppercase tracking-wider rounded-full font-black border cursor-pointer select-none"
               style={{
                 color: accentColor,
                 borderColor: `${accentColor}30`,
@@ -440,39 +455,41 @@ export default function SettingsPage() {
       </div>
 
       {/* Section: Developer Settings */}
-      <div className="space-y-2">
-        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Developer Settings</span>
-        <div className={`bg-card overflow-hidden shadow-sm border border-border/40 p-[15px] space-y-3.5 ${getCardRadiusClass()}`}>
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
-              <Cpu className="w-4.5 h-4.5" />
+      {isDevMode && (
+        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+          <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 px-0.5 mb-1 block">Developer Settings</span>
+          <div className={`bg-card overflow-hidden shadow-sm border border-border/40 p-[15px] space-y-3.5 ${getCardRadiusClass()}`}>
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className={`w-9 h-9 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800/70 text-zinc-700 dark:text-zinc-300 shrink-0 ${getToggleButtonRadiusClass()}`}>
+                <Cpu className="w-4.5 h-4.5" />
+              </div>
+              <div className="text-left min-w-0 flex-1">
+                <p className="font-bold text-sm text-zinc-900 dark:text-white">Custom API Base URL</p>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-450 mt-0.5 leading-normal">
+                  Point this APK to your local machine (e.g. <code className="text-primary font-bold">http://192.168.1.5:5001/api</code>) to sync with your local database. Leave empty to use default production endpoints.
+                </p>
+              </div>
             </div>
-            <div className="text-left min-w-0 flex-1">
-              <p className="font-bold text-sm text-zinc-900 dark:text-white">Custom API Base URL</p>
-              <p className="text-[10px] text-zinc-500 dark:text-zinc-450 mt-0.5 leading-normal">
-                Point this APK to your local machine (e.g. <code className="text-primary font-bold">http://192.168.1.5:5001/api</code>) to sync with your local database. Leave empty to use default production endpoints.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="http://192.168.X.X:5001/api"
-              value={customApiUrl}
-              onChange={(e) => setCustomApiUrl(e.target.value)}
-              className="flex-1 bg-accent/30 dark:bg-zinc-900 border border-border rounded-xl px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/30 text-foreground"
-            />
-            <button
-              onClick={handleSaveCustomApiUrl}
-              disabled={updatingSettings}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-md ${getToggleButtonRadiusClass()}`}
-            >
-              Save & Sync
-            </button>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="http://192.168.X.X:5001/api"
+                value={customApiUrl}
+                onChange={(e) => setCustomApiUrl(e.target.value)}
+                className="flex-1 bg-accent/30 dark:bg-zinc-900 border border-border rounded-xl px-3 text-xs focus:outline-none focus:ring-1 focus:ring-primary placeholder:text-muted-foreground/30 text-foreground"
+              />
+              <button
+                onClick={handleSaveCustomApiUrl}
+                disabled={updatingSettings}
+                className={`px-4 py-2 text-xs font-bold uppercase tracking-wider transition-all bg-primary hover:bg-primary-hover text-primary-foreground cursor-pointer shadow-md ${getToggleButtonRadiusClass()}`}
+              >
+                Save & Sync
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Section 3: Application Data */}
       <div className="space-y-2">

@@ -156,12 +156,26 @@ export class OutboxSyncEngine {
         if (operation === 'delete') {
           await luminaDB.purgeItemPermanently(tableName, entity_local_id);
         } else {
-          await luminaDB.putItem(tableName, {
-            ...localEntity,
-            server_id: serverId || localEntity.server_id,
-            sync_status: 'synced',
-            updated_at: responseData.updatedAt || Date.now()
-          });
+          const finalServerId = serverId || localEntity.server_id;
+          if (finalServerId && finalServerId !== entity_local_id) {
+            // Delete temporary local ID key row
+            await luminaDB.purgeItemPermanently(tableName, entity_local_id);
+            // Insert reconciled row with server ID as primary key
+            await luminaDB.putItem(tableName, {
+              ...localEntity,
+              id: finalServerId,
+              server_id: finalServerId,
+              sync_status: 'synced',
+              updated_at: responseData.updatedAt || Date.now()
+            });
+          } else {
+            await luminaDB.putItem(tableName, {
+              ...localEntity,
+              server_id: finalServerId,
+              sync_status: 'synced',
+              updated_at: responseData.updatedAt || Date.now()
+            });
+          }
         }
       }
 

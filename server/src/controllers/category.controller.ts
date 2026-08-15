@@ -5,9 +5,16 @@ import { Transaction } from "../models/Transaction";
 
 export const getCategories = async (req: AuthRequest, res: Response) => {
   try {
-    const categories = await Category.find({
+    const { updatedSince } = req.query;
+    const query: any = {
       $or: [{ user: req.user._id }, { isGlobal: true }]
-    });
+    };
+
+    if (updatedSince) {
+      query.updatedAt = { $gt: new Date(parseInt(updatedSince as string) || 0) };
+    }
+
+    const categories = await Category.find(query);
     res.json(categories);
   } catch (error: any) {
     res.status(500).json({ message: error.message });

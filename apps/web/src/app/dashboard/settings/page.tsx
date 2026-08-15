@@ -24,6 +24,8 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import api from "@/lib/api";
+import { useLiveTable, createLocalEntity, updateLocalEntity } from "@/hooks/useLocalDB";
+import { luminaDB } from "@/lib/db";
 
 const COLORS = [
   { name: 'Neon Green', hex: '#6bfe9c' },
@@ -116,24 +118,38 @@ export default function SettingsPage() {
     }
   }, []);
 
-  // Sync state with store if user changes
+  const { items: settingsList } = useLiveTable('settings');
+
+  // Sync state with local DB settings
   useEffect(() => {
-    if (user?.settings) {
-      setAutoOpenKeyboard(user.settings.autoOpenKeyboard ?? true);
-      setSmsParserActive(user.settings.smsParserActive ?? true);
+    if (settingsList && settingsList.length > 0) {
+      setAutoOpenKeyboard(settingsList[0].autoOpenKeyboard ?? true);
+      setSmsParserActive(settingsList[0].smsParserActive ?? true);
     }
-  }, [user]);
+  }, [settingsList]);
 
   const handleToggleKeyboard = async (checked: boolean) => {
     setAutoOpenKeyboard(checked);
     setUpdatingSettings(true);
     try {
-      const res = await api.put('/auth/settings', { autoOpenKeyboard: checked });
-      if (user) {
-        setUser({
-          ...user,
-          settings: res.data.settings
+      const existing = await luminaDB.getItemById('settings', 'user_settings');
+      if (existing) {
+        await updateLocalEntity('setting', 'user_settings', {
+          autoOpenKeyboard: checked,
+          smsParserActive: existing.smsParserActive ?? true
         });
+      } else {
+        // Create first entry
+        const tempId = await createLocalEntity('setting', {
+          autoOpenKeyboard: checked,
+          smsParserActive: true
+        });
+        // Override local PK ID to 'user_settings' for easy lookup
+        const created = await luminaDB.getItemById('settings', tempId);
+        if (created) {
+          await luminaDB.purgeItemPermanently('settings', tempId);
+          await luminaDB.putItem('settings', { ...created, id: 'user_settings' });
+        }
       }
     } catch (err) {
       console.error("Failed to update user settings:", err);
@@ -147,12 +163,22 @@ export default function SettingsPage() {
     setSmsParserActive(checked);
     setUpdatingSettings(true);
     try {
-      const res = await api.put('/auth/settings', { smsParserActive: checked });
-      if (user) {
-        setUser({
-          ...user,
-          settings: res.data.settings
+      const existing = await luminaDB.getItemById('settings', 'user_settings');
+      if (existing) {
+        await updateLocalEntity('setting', 'user_settings', {
+          autoOpenKeyboard: existing.autoOpenKeyboard ?? true,
+          smsParserActive: checked
         });
+      } else {
+        const tempId = await createLocalEntity('setting', {
+          autoOpenKeyboard: true,
+          smsParserActive: checked
+        });
+        const created = await luminaDB.getItemById('settings', tempId);
+        if (created) {
+          await luminaDB.purgeItemPermanently('settings', tempId);
+          await luminaDB.putItem('settings', { ...created, id: 'user_settings' });
+        }
       }
     } catch (err) {
       console.error("Failed to update user settings:", err);

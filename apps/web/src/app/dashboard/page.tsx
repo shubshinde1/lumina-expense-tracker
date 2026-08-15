@@ -10,13 +10,7 @@ import { useRouter } from "next/navigation";
 import { getTodayIST, formatDateIST } from "@/lib/dateUtils";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-
-type DashboardData = {
-  balance: number;
-  income: number;
-  expense: number;
-  recentTransactions: any[];
-};
+import { useLiveTransactions, useLiveTable, createLocalEntity, OfflineBadge } from "@/hooks/useLocalDB";
 
 const TEMPLATES = [
   { label: "☕ Coffee", amount: 50, description: "Coffee", type: "expense", categoryKeyword: "Food" },
@@ -30,43 +24,44 @@ const TEMPLATES = [
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { radius } = useThemeStore();
   const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
   const [isMounted, setIsMounted] = useState(false);
 
-  const { data, isLoading, error } = useQuery<DashboardData>({
-    queryKey: ['dashboardSummary'],
-    queryFn: async () => {
-      const response = await api.get('/transactions/dashboard');
-      return response.data;
+  const { transactions, loading: txLoading } = useLiveTransactions();
+  const { items: categories, loading: catLoading } = useLiveTable('categories');
+  const isLoading = txLoading || catLoading;
+  const error = null;
+  const [isQuickLogging, setIsQuickLogging] = useState(false);
+
+  // Compute stats in-memory from local database
+  const balance = transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+  const income = transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc, 0);
+  const expense = transactions.reduce((acc, t) => t.type === 'expense' ? acc + t.amount : acc, 0);
+  const recentTransactions = transactions.slice(0, 5).map(tx => {
+    const catRef = tx.category;
+    let matchedCategory = null;
+    if (typeof catRef === 'string') {
+      matchedCategory = (categories || []).find((c: any) => c.id === catRef || c.server_id === catRef);
+    } else if (typeof catRef === 'object' && catRef !== null) {
+      matchedCategory = {
+        id: catRef._id || catRef.id,
+        server_id: catRef._id || catRef.id,
+        name: catRef.name,
+        icon: catRef.icon,
+        color: catRef.color,
+        subcategories: catRef.subcategories || []
+      };
     }
+    return {
+      ...tx,
+      category: matchedCategory || { name: 'Uncategorized', icon: 'wallet', color: '#9a9daa' }
+    };
   });
 
-  const { data: categories } = useQuery<any[]>({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.get('/categories');
-      return response.data || [];
-    }
-  });
+  const data = { balance, income, expense, recentTransactions };
 
-  const quickAddMutation = useMutation({
-    mutationFn: async (payload: any) => {
-      const response = await api.post('/transactions', payload);
-      return response.data;
-    },
-    onSuccess: (data: any) => {
-      toast.success(`Logged: ${data.description} - ₹${data.amount}`);
-      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-    },
-    onError: (err: any) => {
-      toast.error(err.response?.data?.message || "Failed to log transaction");
-    }
-  });
-
-  const handleQuickLog = (clip: { label: string; amount: number; description: string; type: string; categoryKeyword: string }) => {
+  const handleQuickLog = async (clip: { label: string; amount: number; description: string; type: string; categoryKeyword: string }) => {
     const match = (categories || []).find((c: any) => 
       c.name.toLowerCase().includes(clip.categoryKeyword.toLowerCase()) ||
       clip.categoryKeyword.toLowerCase().includes(c.name.toLowerCase())
@@ -77,15 +72,23 @@ export default function DashboardPage() {
       return;
     }
 
-    quickAddMutation.mutate({
-      type: clip.type,
-      amount: clip.amount,
-      description: clip.description,
-      date: new Date().toISOString(),
-      category: match._id,
-      subcategory: match.subcategories && match.subcategories.length > 0 ? match.subcategories[0]._id : undefined,
-      paymentMode: "UPI"
-    });
+    try {
+      setIsQuickLogging(true);
+      await createLocalEntity('transaction', {
+        type: clip.type,
+        amount: clip.amount,
+        description: clip.description,
+        date: new Date().toISOString(),
+        category: match.id,
+        subcategory: match.subcategories && match.subcategories.length > 0 ? match.subcategories[0]._id : undefined,
+        paymentMode: "UPI"
+      });
+      toast.success(`Logged: ${clip.description} - ₹${clip.amount}`);
+    } catch (e) {
+      toast.error("Failed to log transaction");
+    } finally {
+      setIsQuickLogging(false);
+    }
   };
 
   useEffect(() => {
@@ -153,54 +156,7 @@ export default function DashboardPage() {
     }
   }, [data, isMounted]);
 
-  // Sync background offline transaction alerts collected by SmsReceiver
-  useEffect(() => {
-    const checkAndSyncPendingSms = async () => {
-      try {
-        const { Capacitor, registerPlugin } = await import("@capacitor/core");
-        if (!Capacitor.isNativePlatform()) return;
 
-        const LuminaBridge = registerPlugin<any>('LuminaBridge');
-        
-        const res = await LuminaBridge.getPendingSmsList();
-        if (res && res.smsList) {
-          const smsList = JSON.parse(res.smsList);
-          if (smsList && smsList.length > 0) {
-            console.log(`Found ${smsList.length} offline pending SMS messages to sync.`);
-            
-            const remainingSms: string[] = [];
-            let successCount = 0;
-            const { toast } = await import("sonner");
-            
-            for (const smsText of smsList) {
-              try {
-                await api.post('/transactions/auto-log', { smsText });
-                successCount++;
-              } catch (err) {
-                console.error("Failed to sync offline SMS:", smsText, err);
-                remainingSms.push(smsText);
-              }
-            }
-            
-            // Only update preferences with failed syncs
-            await LuminaBridge.savePendingSmsList({ smsList: JSON.stringify(remainingSms) });
-            
-            if (successCount > 0) {
-              toast.success(`Synchronized ${successCount} background offline transaction(s)!`);
-              queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
-              queryClient.invalidateQueries({ queryKey: ['notifications'] });
-            }
-          }
-        }
-      } catch (e) {
-        console.error("Offline pending SMS sync failed:", e);
-      }
-    };
-
-    if (user && isMounted) {
-      checkAndSyncPendingSms();
-    }
-  }, [user, isMounted, queryClient]);
 
   if (!isMounted || !user) return null;
   
@@ -222,7 +178,6 @@ export default function DashboardPage() {
   }
 
   const firstName = user?.name?.split(" ")[0] || "there";
-  const { balance = 0, income = 0, expense = 0, recentTransactions = [] } = data || {};
 
   return (
     <div className="space-y-3 animate-in fade-in duration-700">
@@ -274,7 +229,7 @@ export default function DashboardPage() {
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
           <h3 className="font-heading text-xs font-bold text-muted-foreground uppercase tracking-wider">Quick Log Expense</h3>
-          {quickAddMutation.isPending && (
+          {isQuickLogging && (
             <Loader2 className="w-3.5 h-3.5 text-primary animate-spin" />
           )}
         </div>
@@ -283,7 +238,7 @@ export default function DashboardPage() {
             <button
               key={clip.label}
               type="button"
-              disabled={quickAddMutation.isPending}
+              disabled={isQuickLogging}
               onClick={() => handleQuickLog(clip)}
               className={`bg-card border border-border/50 hover:border-primary/50 hover:bg-accent px-3.5 py-1.5 text-xs text-foreground font-medium flex items-center gap-1.5 cursor-pointer shrink-0 transition-all active:scale-95 disabled:opacity-50 disabled:pointer-events-none shadow-sm ${pillRoundness}`}
             >
@@ -336,11 +291,11 @@ export default function DashboardPage() {
 
           {recentTransactions.slice(0, 6).map((tx: any) => {
             const subCategoryName = tx.subcategory && tx.category?.subcategories 
-              ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory)?.name 
+              ? tx.category.subcategories.find((s: any) => s._id === tx.subcategory || s.id === tx.subcategory)?.name 
               : null;
 
             return (
-            <div key={tx._id} onClick={() => router.push(`/dashboard/edit?id=${tx._id}`)} className="flex items-center justify-between p-3 rounded-2xl hover:bg-accent/60 transition-colors cursor-pointer group">
+            <div key={tx.id} onClick={() => router.push(`/dashboard/edit?id=${tx.id}`)} className="flex items-center justify-between p-3 rounded-2xl hover:bg-accent/60 transition-colors cursor-pointer group">
               <div className="flex items-center gap-4 flex-1 min-w-0">
                 <div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm shrink-0"
@@ -361,17 +316,15 @@ export default function DashboardPage() {
                 <p className={`font-bold font-heading text-sm ${tx.type === 'income' ? 'text-primary' : 'text-foreground'}`}>
                   {tx.type === 'income' ? '+' : '-'}₹{tx.amount.toLocaleString()}
                 </p>
-                {tx.isOffline ? (
-                  <div className="flex items-center justify-end gap-1 text-[9px] text-zinc-500 mt-0.5">
-                    <CloudOff className="w-2.5 h-2.5" />
-                    <span>Offline</span>
-                  </div>
-                ) : tx.location?.address ? (
-                  <div className="flex items-center justify-end gap-1 text-[9px] text-muted-foreground/50 mt-0.5">
-                    <MapPin className="w-2.5 h-2.5 shrink-0"/> 
-                    <span className="truncate max-w-[80px]">{tx.location.address}</span>
-                  </div>
-                ) : null}
+                <div className="flex items-center justify-end gap-1 mt-0.5">
+                  <OfflineBadge status={tx.sync_status} clientMutationId={tx.client_mutation_id} />
+                  {(!tx.sync_status || tx.sync_status === 'synced') && tx.location?.address ? (
+                    <div className="flex items-center justify-end gap-1 text-[9px] text-muted-foreground/50">
+                      <MapPin className="w-2.5 h-2.5 shrink-0"/> 
+                      <span className="truncate max-w-[80px]">{tx.location.address}</span>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           )})}

@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { useThemeStore } from "@/stores/useThemeStore";
 import { formatDateIST, formatTimeIST, getTodayIST, getYesterdayIST, isSameDayIST, getStartOfMonthIST } from "@/lib/dateUtils";
 import HorizontalDateSelector from "@/components/HorizontalDateSelector";
+import { useLiveTransactions, useLiveTable, deleteLocalEntity, OfflineBadge } from "@/hooks/useLocalDB";
 
 function groupByDate(transactions: any[]) {
   const groupsMap = new Map<string, any[]>();
@@ -36,7 +37,6 @@ function groupByDate(transactions: any[]) {
 }
 
 export default function HistoryPage() {
-  const queryClient = useQueryClient();
   const router = useRouter();
   const { radius } = useThemeStore();
   const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
@@ -48,42 +48,11 @@ export default function HistoryPage() {
   const [customEnd, setCustomEnd] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // Infinite Scroll & Pagination States
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
-  const [totalBalance, setTotalBalance] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
-  const [isOnline, setIsOnline] = useState(typeof window !== 'undefined' ? navigator.onLine : true);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
-        setIsExportDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Search input debouncer
   const [debouncedSearch, setDebouncedSearch] = useState(searchQuery);
@@ -95,89 +64,96 @@ export default function HistoryPage() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const fetchTransactions = async (pageNum: number, isReset: boolean) => {
-    try {
-      if (isReset) {
-        setIsLoading(true);
-      } else {
-        setLoadingMore(true);
-      }
-
-      const params: any = {
-        page: pageNum.toString(),
-        limit: "15",
-      };
-
-      if (filter !== "all") {
-        params.type = filter;
-      }
-
-      if (debouncedSearch.trim()) {
-        params.search = debouncedSearch.trim();
-      }
-
-      const now = new Date();
-      if (timeFilter === 'week') {
-        const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-        params.startDate = weekAgo.toISOString();
-      } else if (timeFilter === 'month') {
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        params.startDate = startOfMonth.toISOString();
-      } else if (timeFilter === 'quarter') {
-        const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
-        params.startDate = quarterAgo.toISOString();
-      } else if (timeFilter === 'custom') {
-        if (customStart) params.startDate = new Date(customStart).toISOString();
-        if (customEnd) params.endDate = new Date(customEnd).toISOString();
-      } else if (timeFilter === 'exact_date') {
-        const startOfDay = new Date(selectedDate);
-        startOfDay.setHours(0, 0, 0, 0);
-        const endOfDay = new Date(selectedDate);
-        endOfDay.setHours(23, 59, 59, 999);
-        params.startDate = startOfDay.toISOString();
-        params.endDate = endOfDay.toISOString();
-      }
-
-      const queryString = new URLSearchParams(params).toString();
-      const res = await api.get(`/transactions?${queryString}`);
-
-      const newTxs = res.data.transactions || [];
-      const pages = res.data.pages || 1;
-      const total = res.data.total || 0;
-      const balance = res.data.totalBalance || 0;
-
-      if (isReset) {
-        setTransactions(newTxs);
-        setPage(1);
-      } else {
-        setTransactions(prev => [...prev, ...newTxs]);
-      }
-
-      setTotalPages(pages);
-      setTotalCount(total);
-      setTotalBalance(balance);
-      setHasMore(pageNum < pages);
-    } catch (err) {
-      console.error("Failed to load transactions", err);
-    } finally {
-      setIsLoading(false);
-      setLoadingMore(false);
-    }
-  };
-
-  // Reset page and list on filter changes
   useEffect(() => {
-    fetchTransactions(1, true);
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setIsExportDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Reset page on filter changes
+  useEffect(() => {
+    setPage(1);
   }, [filter, timeFilter, selectedDate, customStart, customEnd, debouncedSearch]);
 
-  // Load next pages on page increment
-  useEffect(() => {
-    if (page > 1) {
-      fetchTransactions(page, false);
-    }
-  }, [page]);
+  const { transactions: allTransactions, loading: txLoading } = useLiveTransactions();
+  const { items: categories, loading: catLoading } = useLiveTable('categories');
+  const isLoading = txLoading || catLoading;
 
-  // Infinite Scroll Trigger
+  // Filter in-memory
+  const filteredTransactions = allTransactions.filter(tx => {
+    if (filter !== 'all' && tx.type !== filter) return false;
+
+    if (debouncedSearch.trim()) {
+      const s = debouncedSearch.toLowerCase().trim();
+      const matchDesc = (tx.description || '').toLowerCase().includes(s);
+      const matchMode = (tx.paymentMode || '').toLowerCase().includes(s);
+      const matchLoc = tx.location?.address && tx.location.address.toLowerCase().includes(s);
+      if (!matchDesc && !matchMode && !matchLoc) return false;
+    }
+
+    const now = new Date();
+    const txDate = new Date(tx.date);
+    if (timeFilter === 'week') {
+      const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+      if (txDate < weekAgo) return false;
+    } else if (timeFilter === 'month') {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      if (txDate < startOfMonth) return false;
+    } else if (timeFilter === 'quarter') {
+      const quarterAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+      if (txDate < quarterAgo) return false;
+    } else if (timeFilter === 'custom') {
+      if (customStart && txDate < new Date(customStart)) return false;
+      if (customEnd) {
+        const end = new Date(customEnd);
+        end.setHours(23, 59, 59, 999);
+        if (txDate > end) return false;
+      }
+    } else if (timeFilter === 'exact_date') {
+      const startOfDay = new Date(selectedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(selectedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      if (txDate < startOfDay || txDate > endOfDay) return false;
+    }
+    return true;
+  });
+
+  const totalCount = filteredTransactions.length;
+  const totalBalance = filteredTransactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+
+  const PAGE_SIZE = 15;
+  const paginatedTransactions = filteredTransactions.slice(0, page * PAGE_SIZE);
+  const hasMore = paginatedTransactions.length < filteredTransactions.length;
+
+  const mappedTransactions = paginatedTransactions.map(tx => {
+    const catRef = tx.category;
+    let matchedCategory = null;
+    if (typeof catRef === 'string') {
+      matchedCategory = (categories || []).find((c: any) => c.id === catRef || c.server_id === catRef);
+    } else if (typeof catRef === 'object' && catRef !== null) {
+      matchedCategory = {
+        id: catRef._id || catRef.id,
+        server_id: catRef._id || catRef.id,
+        name: catRef.name,
+        icon: catRef.icon,
+        color: catRef.color,
+        subcategories: catRef.subcategories || []
+      };
+    }
+    return {
+      ...tx,
+      category: matchedCategory || { name: 'Uncategorized', icon: 'wallet', color: '#9a9daa' }
+    };
+  });
+
+  const grouped = groupByDate(mappedTransactions);
+
+  // Scroll handler for Infinite Scroll
   useEffect(() => {
     const handleScroll = (e: Event) => {
       const target = e.target as HTMLElement | Document;
@@ -197,29 +173,25 @@ export default function HistoryPage() {
         clientHeight = target.clientHeight;
       }
 
-      if (
-        scrollHeight - scrollTop - clientHeight <= 120 &&
-        !loadingMore &&
-        hasMore &&
-        !isLoading &&
-        isOnline
-      ) {
+      if (scrollHeight - scrollTop - clientHeight <= 120 && hasMore && !isLoading) {
         setPage(p => p + 1);
       }
     };
     window.addEventListener("scroll", handleScroll, { capture: true });
     return () => window.removeEventListener("scroll", handleScroll, { capture: true });
-  }, [loadingMore, hasMore, isLoading, isOnline]);
+  }, [hasMore, isLoading]);
 
-  const deleteMutation = useMutation({
-    mutationFn: async (id: string) => {
-      await api.delete(`/transactions/${id}`);
-    },
-    onSuccess: () => {
-      fetchTransactions(1, true);
-      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
+  const handleDelete = async (id: string) => {
+    try {
+      setIsDeleting(true);
+      await deleteLocalEntity('transaction', id);
+      setDeleteConfirmId(null);
+    } catch (err) {
+      console.error("Failed to delete transaction:", err);
+    } finally {
+      setIsDeleting(false);
     }
-  });
+  };
 
   const handleExport = async (format: 'csv' | 'excel') => {
     try {
@@ -371,7 +343,7 @@ export default function HistoryPage() {
     );
   }
 
-  const grouped = groupByDate(transactions);
+
 
   return (
     <div className="space-y-3 animate-in fade-in duration-500">
@@ -404,7 +376,7 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
-              disabled={exporting || transactions.length === 0}
+              disabled={exporting || filteredTransactions.length === 0}
               className="flex items-center gap-1.5 px-3.5 h-[42px] bg-card border border-border rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {exporting ? (
@@ -504,7 +476,7 @@ export default function HistoryPage() {
       )}
 
       {/* Summary strip */}
-      {transactions.length > 0 && (
+      {filteredTransactions.length > 0 && (
         <div className="flex items-center justify-between px-4 py-3 bg-card rounded-2xl border border-border">
           <span className="text-xs text-muted-foreground">{totalCount} transactions</span>
           <span className={`font-heading font-bold text-sm ${totalBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
@@ -514,7 +486,7 @@ export default function HistoryPage() {
       )}
 
       {/* Grouped Transactions */}
-      {transactions.length === 0 ? (
+      {filteredTransactions.length === 0 ? (
         <div className="text-center py-16 flex flex-col items-center gap-3">
           <SearchX className="w-10 h-10 text-muted-foreground/30" />
           <p className="text-sm font-medium text-muted-foreground">No transactions found</p>
@@ -544,19 +516,8 @@ export default function HistoryPage() {
             </div>
           ))}
           
-          {loadingMore && (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
-          )}
-          {!isOnline && (
-            <div className="flex flex-col items-center justify-center gap-1.5 p-5 bg-zinc-900/60 border border-zinc-800/40 rounded-2xl text-center my-4 animate-in fade-in duration-300">
-              <CloudOff className="w-5 h-5 text-zinc-500" />
-              <p className="text-xs font-bold text-zinc-400">Offline Mode Active</p>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-wider">Reconnect to load more transaction history</p>
-            </div>
-          )}
-          {isOnline && !hasMore && transactions.length > 0 && (
+
+          {!hasMore && filteredTransactions.length > 0 && (
             <p className="text-[10px] text-center text-muted-foreground uppercase py-4">End of transaction history</p>
           )}
         </div>
@@ -575,20 +536,20 @@ export default function HistoryPage() {
               <button 
                 onClick={() => setDeleteConfirmId(null)} 
                 className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-accent text-foreground hover:bg-accent/80 transition-colors"
-                disabled={deleteMutation.isPending}
+                disabled={isDeleting}
               >
                 Cancel
               </button>
               <button 
                 onClick={() => { 
-                  deleteMutation.mutate(deleteConfirmId, {
-                    onSuccess: () => setDeleteConfirmId(null)
-                  }); 
+                  if (deleteConfirmId) {
+                    handleDelete(deleteConfirmId);
+                  }
                 }} 
-                disabled={deleteMutation.isPending}
+                disabled={isDeleting}
                 className="flex-1 py-3.5 rounded-xl font-bold text-sm bg-destructive text-white hover:bg-destructive/90 shadow-[0_8px_16px_-4px_var(--tw-shadow-color)] [--tw-shadow-color:color-mix(in_srgb,var(--color-destructive)_40%,transparent)] transition-all active:scale-95 flex items-center justify-center gap-2"
               >
-                {deleteMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                {isDeleting && <Loader2 className="w-4 h-4 animate-spin" />}
                 Delete
               </button>
             </div>
@@ -707,12 +668,7 @@ function SwipeableTxCard({ tx, subCategoryName, onEdit, onDelete }: any) {
 
               return (
                 <div className="flex items-center gap-1.5 mt-1.5 flex-wrap justify-end">
-                  {tx.isOffline && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-750/30">
-                      <CloudOff className="w-[10px] h-[10px]" />
-                      <span className="text-[9px] uppercase font-bold tracking-widest">Offline</span>
-                    </div>
-                  )}
+                  <OfflineBadge status={tx.sync_status} clientMutationId={tx.client_mutation_id} />
                   <div className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full ${colorClasses}`}>
                     <Icon className="w-[10px] h-[10px]" />
                     <span className="text-[9px] uppercase font-bold tracking-widest">

@@ -120,4 +120,12 @@ public class LuminaBridgePlugin extends Plugin {
 
         call.resolve();
     }
+
+    @PluginMethod
+    public void getDatabasePasscode(PluginCall call) {
+        String passcode = SecurePrefs.getDatabasePasscode(getContext());
+        JSObject ret = new JSObject();
+        ret.put("passcode", passcode);
+        call.resolve(ret);
+    }
 }

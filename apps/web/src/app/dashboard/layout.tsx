@@ -30,6 +30,11 @@ export default function DashboardLayout({
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Bootstrap local database sync on layout mount
+    import("@/lib/syncEngine").then(({ syncEngine }) => {
+      syncEngine.sync().catch(err => console.error("Initial layout sync failed:", err));
+    });
   }, []);
 
   // Pull to Refresh States & Handlers
@@ -88,7 +93,8 @@ export default function DashboardLayout({
       setPullDistance(50);
       
       try {
-        await queryClient.refetchQueries();
+        const { syncEngine } = await import("@/lib/syncEngine");
+        await syncEngine.sync();
         await new Promise((resolve) => setTimeout(resolve, 600));
       } catch (err) {
         console.error("Refresh failed", err);

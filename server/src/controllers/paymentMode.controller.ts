@@ -4,6 +4,8 @@ import { PaymentMode } from "../models/PaymentMode";
 
 export const getPaymentModes = async (req: AuthRequest, res: Response) => {
   try {
+    const { updatedSince } = req.query;
+
     // Check if global payment modes exist. If not, auto-seed defaults.
     const count = await PaymentMode.countDocuments({ isGlobal: true });
     if (count === 0) {
@@ -16,15 +18,21 @@ export const getPaymentModes = async (req: AuthRequest, res: Response) => {
       ]);
     }
 
-    const modes = await PaymentMode.find({
+    const query: any = {
       $or: [{ user: req.user._id }, { isGlobal: true }]
-    });
+    };
+
+    if (updatedSince) {
+      query.updatedAt = { $gt: new Date(parseInt(updatedSince as string) || 0) };
+    }
+
+    const modes = await PaymentMode.find(query);
 
     // Filter subPaymentModes for the current user
     const filteredModes = modes.map(m => {
       const obj = m.toObject() as any;
       obj.subPaymentModes = obj.subPaymentModes.filter(
-        (sub: any) => sub.user?.toString() === req.user._id.toString()
+        (sub: any) => !sub.user || sub.user.toString() === req.user._id.toString()
       );
       return obj;
     });

@@ -67,7 +67,17 @@ export const addTransaction = async (req: AuthRequest, res: Response) => {
 };
 export const getTransactions = async (req: AuthRequest, res: Response) => {
   try {
-    const { page, limit, type, startDate, endDate, search } = req.query;
+    const { page, limit, type, startDate, endDate, search, updatedSince } = req.query;
+
+    if (updatedSince) {
+      const sinceDate = new Date(parseInt(updatedSince as string) || 0);
+      const deltaTransactions = await Transaction.find({
+        user: req.user._id,
+        updatedAt: { $gt: sinceDate }
+      }).populate("category", "name icon color subcategories");
+      res.json(deltaTransactions);
+      return;
+    }
 
     const query: any = { user: req.user._id };
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin, Mic, MessageSquare, Sparkles, Cpu } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -13,6 +12,7 @@ import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useThemeStore } from "@/stores/useThemeStore";
+import { useLiveTable, createLocalEntity } from "@/hooks/useLocalDB";
 
 const TEMPLATES = {
   expense: [
@@ -34,7 +34,6 @@ const TEMPLATES = {
 function AddTransactionForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const { radius } = useThemeStore();
   const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
@@ -51,6 +50,7 @@ function AddTransactionForm() {
   const [subPaymentMode, setSubPaymentMode] = useState("");
   const [locationObj, setLocationObj] = useState<{ lat: number, lng: number, address: string } | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Voice AI & SMS Parsing States
   const [isRecording, setIsRecording] = useState(false);
@@ -88,9 +88,10 @@ function AddTransactionForm() {
     );
     
     if (match) {
-      setCategoryId(match._id);
+      setCategoryId(match.id || match._id);
       if (match.subcategories && match.subcategories.length > 0) {
-        setSubcategoryId(match.subcategories[0]._id);
+        const sub = match.subcategories[0];
+        setSubcategoryId(sub.id || sub._id || "");
       } else {
         setSubcategoryId("");
       }
@@ -406,13 +407,7 @@ function AddTransactionForm() {
     return () => { mounted = false; };
   }, []);
 
-  const { data: categories, isLoading: isLoadingCats } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.get('/categories');
-      return response.data;
-    }
-  });
+  const { items: categories, loading: isLoadingCats } = useLiveTable('categories');
 
   useEffect(() => {
     const templateName = searchParams.get('template');
@@ -430,46 +425,34 @@ function AddTransactionForm() {
     }
   }, [searchParams, categories]);
 
-  const { data: paymentModes = [], isLoading: isLoadingPayModes } = useQuery<any[]>({
-    queryKey: ['paymentModes'],
-    queryFn: async () => {
-      const response = await api.get('/payment-modes');
-      return response.data || [];
-    }
-  });
+  const { items: paymentModes = [], loading: isLoadingPayModes } = useLiveTable('payment_modes');
 
   const filteredCategories = (categories || []).filter((c: any) => c.type === type);
 
-  const mutation = useMutation({
-    mutationFn: async (payload: any) => {
-      const response = await api.post('/transactions', payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
-      router.push('/dashboard');
-    },
-    onError: (error: any) => {
-      alert(error.response?.data?.message || "Failed to add transaction");
-    }
-  });
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalAmount = amount.split('+').reduce((sum, val) => sum + (Number(val) || 0), 0);
     if (!finalAmount || !categoryId) return alert("Please fill amount and category");
 
-    mutation.mutate({
-      type,
-      amount: finalAmount,
-      description,
-      date: fromLocalDateTimeLocal(date).toISOString(),
-      category: categoryId,
-      subcategory: subcategoryId || undefined,
-      location: locationObj || undefined,
-      paymentMode,
-      subPaymentMode: subPaymentMode || undefined,
-    });
+    try {
+      setIsSaving(true);
+      await createLocalEntity('transaction', {
+        type,
+        amount: finalAmount,
+        description,
+        date: fromLocalDateTimeLocal(date).toISOString(),
+        category: categoryId,
+        subcategory: subcategoryId || undefined,
+        location: locationObj || undefined,
+        paymentMode,
+        subPaymentMode: subPaymentMode || undefined,
+      });
+      router.push('/dashboard');
+    } catch (err: any) {
+      alert("Failed to add transaction locally");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -809,10 +792,10 @@ function AddTransactionForm() {
         </div>
 
         <button
-          disabled={mutation.isPending || isParsing}
+          disabled={isSaving || isParsing}
           className="w-full flex items-center justify-center gap-2 h-16 mt-8 bg-primary text-primary-foreground font-heading font-bold text-lg rounded-xl shadow-[0_12px_24px_-8px_var(--tw-shadow-color)] [--tw-shadow-color:color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:opacity-90 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:active:scale-100"
         >
-          {mutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           Record {type}
         </button>
       </form>

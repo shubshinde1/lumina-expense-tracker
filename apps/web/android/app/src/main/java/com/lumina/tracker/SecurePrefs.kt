@@ -9,6 +9,7 @@ object SecurePrefs {
     private const val KEY_TOKEN = "token"
     private const val KEY_API_URL = "apiUrl"
     private const val KEY_EMAIL = "email"
+    private const val KEY_DB_PASSCODE = "dbPasscode"
 
     private fun getEncryptedPrefs(context: Context) = try {
         val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
@@ -57,5 +58,16 @@ object SecurePrefs {
     @JvmStatic
     fun getEmail(context: Context): String? {
         return getEncryptedPrefs(context).getString(KEY_EMAIL, null)
+    }
+
+    @JvmStatic
+    fun getDatabasePasscode(context: Context): String {
+        val prefs = getEncryptedPrefs(context)
+        var passcode = prefs.getString(KEY_DB_PASSCODE, null)
+        if (passcode == null) {
+            passcode = java.util.UUID.randomUUID().toString()
+            prefs.edit().putString(KEY_DB_PASSCODE, passcode).apply()
+        }
+        return passcode
     }
 }

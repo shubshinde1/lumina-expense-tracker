@@ -1,6 +1,7 @@
 import express from "express";
 import { registerUser, authUser, verifyAdminLoginOtp, requestRegisterOtp, requestResetOtp, resetPassword, updateUserSettings, getActiveSessions, deleteSession, deleteAllOtherSessions } from "../controllers/auth.controller";
 import { protect } from "../middleware/auth.middleware";
+import { checkIdempotency } from "../middleware/idempotency.middleware";
 
 const router = express.Router();
 
@@ -17,7 +18,7 @@ router.post("/login", authUser);
 router.post("/login/verify", verifyAdminLoginOtp);
 
 // User settings route
-router.put("/settings", protect as any, updateUserSettings);
+router.put("/settings", protect as any, checkIdempotency as any, updateUserSettings);
 
 // Session Management routes
 router.get("/sessions", protect as any, getActiveSessions);

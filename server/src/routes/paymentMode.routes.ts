@@ -1,5 +1,6 @@
 import express from "express";
 import { protect } from "../middleware/auth.middleware";
+import { checkIdempotency } from "../middleware/idempotency.middleware";
 import { 
   getPaymentModes, 
   createPaymentMode, 
@@ -13,12 +14,12 @@ import {
 const router = express.Router();
 
 router.get("/", protect, getPaymentModes);
-router.post("/", protect, createPaymentMode);
-router.put("/:id", protect, updatePaymentMode);
-router.delete("/:id", protect, deletePaymentMode);
+router.post("/", protect, checkIdempotency, createPaymentMode);
+router.put("/:id", protect, checkIdempotency, updatePaymentMode);
+router.delete("/:id", protect, checkIdempotency, deletePaymentMode);
 
-router.post("/:id/subpaymentmodes", protect, addSubPaymentMode);
-router.put("/:modeId/subpaymentmodes/:subId", protect, updateSubPaymentMode);
-router.delete("/:modeId/subpaymentmodes/:subId", protect, deleteSubPaymentMode);
+router.post("/:id/subpaymentmodes", protect, checkIdempotency, addSubPaymentMode);
+router.put("/:modeId/subpaymentmodes/:subId", protect, checkIdempotency, updateSubPaymentMode);
+router.delete("/:modeId/subpaymentmodes/:subId", protect, checkIdempotency, deleteSubPaymentMode);
 
 export default router;

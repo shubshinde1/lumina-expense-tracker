@@ -3,7 +3,6 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Loader2, Save, MapPin } from "lucide-react";
 import Link from "next/link";
 import AmountInput from "@/components/AmountInput";
@@ -12,6 +11,7 @@ import { useThemeStore } from "@/stores/useThemeStore";
 import api from "@/lib/api";
 import { toLocalDateTimeLocal, fromLocalDateTimeLocal } from "@/lib/dateUtils";
 import { Geolocation } from "@capacitor/geolocation";
+import { useLiveTransactions, useLiveTable, updateLocalEntity } from "@/hooks/useLocalDB";
 
 export default function EditTransactionPage() {
   return (
@@ -25,7 +25,6 @@ function EditContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const { radius } = useThemeStore();
   const pillRoundness = radius === 0 ? "rounded-none" : "rounded-full";
@@ -41,6 +40,7 @@ function EditContent() {
   const [subPaymentMode, setSubPaymentMode] = useState("");
   const [locationObj, setLocationObj] = useState<{lat: number, lng: number, address: string} | null>(null);
   const [isFetchingLocation, setIsFetchingLocation] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
@@ -55,7 +55,6 @@ function EditContent() {
     const fetchLocation = async () => {
       try {
         setIsFetchingLocation(true);
-        // On mobile, this will trigger the system permission popup if not already granted
         const position = await Geolocation.getCurrentPosition({
           enableHighAccuracy: true,
           timeout: 10000
@@ -84,30 +83,12 @@ function EditContent() {
     return () => { mounted = false; };
   }, []);
 
-  const { data: transaction, isLoading: isLoadingTx } = useQuery({
-    queryKey: ['transaction', id],
-    queryFn: async () => {
-      const response = await api.get(`/transactions/${id}`);
-      return response.data;
-    },
-    enabled: !!id
-  });
+  const { transactions, loading: txLoading } = useLiveTransactions();
+  const { items: categories, loading: isLoadingCats } = useLiveTable('categories');
+  const { items: paymentModes = [], loading: isLoadingPayModes } = useLiveTable('payment_modes');
 
-  const { data: categories, isLoading: isLoadingCats } = useQuery({
-    queryKey: ['categories'],
-    queryFn: async () => {
-      const response = await api.get('/categories');
-      return response.data;
-    }
-  });
-
-  const { data: paymentModes = [], isLoading: isLoadingPayModes } = useQuery<any[]>({
-    queryKey: ['paymentModes'],
-    queryFn: async () => {
-      const response = await api.get('/payment-modes');
-      return response.data || [];
-    }
-  });
+  const transaction = transactions.find(t => t.id === id || t.server_id === id);
+  const isLoadingTx = txLoading;
 
   useEffect(() => {
     if (transaction) {
@@ -123,21 +104,6 @@ function EditContent() {
     }
   }, [transaction]);
 
-  const mutation = useMutation({
-    mutationFn: async (payload: any) => {
-      const response = await api.put(`/transactions/${id}`, payload);
-      return response.data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['dashboardSummary'] });
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      router.push('/dashboard/history');
-    },
-    onError: (error: any) => {
-      alert(error.response?.data?.message || "Failed to edit transaction");
-    }
-  });
-
   if (!isMounted) return null;
   if (!user) return null;
   if (!id) return <div className="p-12 text-center text-muted-foreground">Error: No ID Provided</div>;
@@ -145,22 +111,30 @@ function EditContent() {
 
   const filteredCategories = (categories || []).filter((c: any) => c.type === type);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalAmount = amount.split('+').reduce((sum, val) => sum + (Number(val) || 0), 0);
     if (!finalAmount || !categoryId) return alert("Please fill amount and category");
 
-    mutation.mutate({
-      type,
-      amount: finalAmount,
-      description,
-      date: fromLocalDateTimeLocal(date).toISOString(),
-      category: categoryId,
-      subcategory: subcategoryId || undefined,
-      location: locationObj || undefined,
-      paymentMode,
-      subPaymentMode: subPaymentMode || undefined,
-    });
+    try {
+      setIsSaving(true);
+      await updateLocalEntity('transaction', id!, {
+        type,
+        amount: finalAmount,
+        description,
+        date: fromLocalDateTimeLocal(date).toISOString(),
+        category: categoryId,
+        subcategory: subcategoryId || undefined,
+        location: locationObj || undefined,
+        paymentMode,
+        subPaymentMode: subPaymentMode || undefined,
+      });
+      router.push('/dashboard/history');
+    } catch (err: any) {
+      alert("Failed to edit transaction locally");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!id) return <div className="p-12 text-center text-muted-foreground">Error: No ID Provided</div>;
@@ -390,10 +364,10 @@ function EditContent() {
         </div>
 
         <button
-          disabled={mutation.isPending}
+          disabled={isSaving}
           className="w-full flex items-center justify-center gap-2 h-16 mt-8 bg-primary text-primary-foreground font-heading font-bold text-lg rounded-xl shadow-[0_12px_24px_-8px_var(--tw-shadow-color)] [--tw-shadow-color:color-mix(in_srgb,var(--color-primary)_40%,transparent)] hover:opacity-90 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:active:scale-100"
         >
-          {mutation.isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+          {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
           Update Changes
         </button>
       </form>

@@ -1,8 +1,7 @@
 'use client';
 
-import { useQuery } from "@tanstack/react-query";
+import { useLiveTransactions, useLiveTable } from "@/hooks/useLocalDB";
 import { Loader2, PieChart as PieChartIcon, TrendingUp, TrendingDown, Calendar, Wallet, MapPin, Target, ChevronDown } from "lucide-react";
-import api from "@/lib/api";
 import { useState, useEffect } from "react";
 import { formatDateIST, IST_TIMEZONE } from "@/lib/dateUtils";
 import { 
@@ -25,12 +24,30 @@ export default function AnalyticsPage() {
 
   useEffect(() => setMounted(true), []);
 
-  const { data: transactions, isLoading } = useQuery({
-    queryKey: ['transactions'],
-    queryFn: async () => {
-      const response = await api.get('/transactions');
-      return response.data;
+  const { transactions: rawTransactions, loading: txLoading } = useLiveTransactions();
+  const { items: categories, loading: catLoading } = useLiveTable('categories');
+  const isLoading = txLoading || catLoading;
+
+  // Map category details
+  const transactions = rawTransactions.map(tx => {
+    const catRef = tx.category;
+    let matchedCategory = null;
+    if (typeof catRef === 'string') {
+      matchedCategory = (categories || []).find((c: any) => c.id === catRef || c.server_id === catRef);
+    } else if (typeof catRef === 'object' && catRef !== null) {
+      matchedCategory = {
+        id: catRef._id || catRef.id,
+        server_id: catRef._id || catRef.id,
+        name: catRef.name,
+        icon: catRef.icon,
+        color: catRef.color,
+        subcategories: catRef.subcategories || []
+      };
     }
+    return {
+      ...tx,
+      category: matchedCategory || { name: 'Uncategorized', icon: 'wallet', color: '#9a9daa' }
+    };
   });
 
   if (isLoading || !mounted) {

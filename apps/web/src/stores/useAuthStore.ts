@@ -19,10 +19,31 @@ interface AuthState {
   logout: () => void;
 }
 
+const getCachedUser = (): User | null => {
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem('lumina_user');
+    if (cached) {
+      try {
+        const u = JSON.parse(cached);
+        import('../lib/db').then(({ luminaDB }) => {
+          luminaDB.updateSecretSalt(u.email);
+        });
+        return u;
+      } catch (e) {}
+    }
+  }
+  return null;
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('lumina_user') || 'null') : null,
+  user: getCachedUser(),
   setUser: (user) => {
     localStorage.setItem('lumina_user', JSON.stringify(user));
+    
+    // Sync salt to local db client for IndexedDB encryption
+    import('../lib/db').then(({ luminaDB }) => {
+      luminaDB.updateSecretSalt(user.email);
+    });
     
     // Sync session to native Android SharedPreferences
     (async () => {

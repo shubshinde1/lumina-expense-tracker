@@ -10,7 +10,8 @@ const paymentModeSchema = new mongoose.Schema(
     name: { type: String, required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
     isGlobal: { type: Boolean, default: false },
-    subPaymentModes: [subPaymentModeSchema]
+    subPaymentModes: [subPaymentModeSchema],
+    deleted: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

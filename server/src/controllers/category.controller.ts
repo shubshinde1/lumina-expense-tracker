@@ -12,6 +12,8 @@ export const getCategories = async (req: AuthRequest, res: Response) => {
 
     if (updatedSince) {
       query.updatedAt = { $gt: new Date(parseInt(updatedSince as string) || 0) };
+    } else {
+      query.deleted = { $ne: true };
     }
 
     const categories = await Category.find(query);
@@ -41,11 +43,16 @@ export const updateCategory = async (req: AuthRequest, res: Response) => {
 
 export const deleteCategory = async (req: AuthRequest, res: Response) => {
   try {
-    const txCount = await Transaction.countDocuments({ category: req.params.id });
+    const txCount = await Transaction.countDocuments({ category: req.params.id, deleted: { $ne: true } });
     if (txCount > 0) {
       return res.status(400).json({ message: `Cannot delete: This category is consumed by ${txCount} transaction record(s).` });
     }
-    await Category.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    const category = await Category.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { deleted: true },
+      { new: true }
+    );
+    if (!category) return res.status(404).json({ message: "Category not found" });
     res.json({ message: "Category deleted" });
   } catch (error: any) { res.status(500).json({ message: error.message }); }
 };

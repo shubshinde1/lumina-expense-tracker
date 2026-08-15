@@ -96,8 +96,20 @@ function EditContent() {
       setAmount(transaction.amount.toString());
       setDescription(transaction.description || "");
       setDate(toLocalDateTimeLocal(transaction.date));
-      setCategoryId(transaction.category);
-      setSubcategoryId(transaction.subcategory || "");
+      const catRef = transaction.category;
+      if (typeof catRef === 'object' && catRef !== null) {
+        setCategoryId(catRef._id || catRef.id || "");
+      } else {
+        setCategoryId(catRef || "");
+      }
+
+      const subCatRef = transaction.subcategory;
+      if (typeof subCatRef === 'object' && subCatRef !== null) {
+        setSubcategoryId(subCatRef._id || subCatRef.id || "");
+      } else {
+        setSubcategoryId(subCatRef || "");
+      }
+
       setPaymentMode(transaction.paymentMode || "UPI");
       setSubPaymentMode(transaction.subPaymentMode || "");
       setLocationObj(transaction.location || null);

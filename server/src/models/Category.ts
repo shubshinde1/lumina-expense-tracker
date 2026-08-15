@@ -13,7 +13,8 @@ const categorySchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: false },
     isGlobal: { type: Boolean, default: false },
     type: { type: String, enum: ["income", "expense"], required: true },
-    subcategories: [subcategorySchema]
+    subcategories: [subcategorySchema],
+    deleted: { type: Boolean, default: false }
   },
   { timestamps: true }
 );

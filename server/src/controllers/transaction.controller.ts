@@ -79,7 +79,7 @@ export const getTransactions = async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const query: any = { user: req.user._id };
+    const query: any = { user: req.user._id, deleted: { $ne: true } };
 
     if (type && type !== 'all') {
       query.type = type;
@@ -190,7 +190,11 @@ export const updateTransaction = async (req: AuthRequest, res: Response): Promis
 
 export const deleteTransaction = async (req: AuthRequest, res: Response) => {
   try {
-    const transaction = await Transaction.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    const transaction = await Transaction.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { deleted: true },
+      { new: true }
+    );
     if (!transaction) return res.status(404).json({ message: "Transaction not found" });
     res.json({ message: "Transaction removed" });
   } catch (error: any) {

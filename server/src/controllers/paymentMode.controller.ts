@@ -24,6 +24,8 @@ export const getPaymentModes = async (req: AuthRequest, res: Response) => {
 
     if (updatedSince) {
       query.updatedAt = { $gt: new Date(parseInt(updatedSince as string) || 0) };
+    } else {
+      query.deleted = { $ne: true };
     }
 
     const modes = await PaymentMode.find(query);
@@ -68,7 +70,12 @@ export const updatePaymentMode = async (req: AuthRequest, res: Response) => {
 
 export const deletePaymentMode = async (req: AuthRequest, res: Response) => {
   try {
-    await PaymentMode.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    const mode = await PaymentMode.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { deleted: true },
+      { new: true }
+    );
+    if (!mode) return res.status(404).json({ message: "Payment mode not found" });
     res.json({ message: "Payment mode deleted" });
   } catch (error: any) {
     res.status(500).json({ message: error.message });

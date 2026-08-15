@@ -16,6 +16,7 @@ const transactionSchema = new mongoose.Schema(
     },
     paymentMode: { type: String, default: 'UPI' },
     subPaymentMode: { type: String },
+    deleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

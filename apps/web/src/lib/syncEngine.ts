@@ -300,6 +300,11 @@ export class OutboxSyncEngine {
             maxUpdatedAt = sUpdatedAt;
           }
 
+          if (sItem.deleted) {
+            await luminaDB.purgeItemPermanently(tableName, sId);
+            continue;
+          }
+
           // Check if local matches
           const localItem = await luminaDB.getItemById(tableName, sId);
           

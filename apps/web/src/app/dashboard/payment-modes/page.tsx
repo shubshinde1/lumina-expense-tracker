@@ -121,15 +121,7 @@ export default function PaymentModesPage() {
   return (
     <div className="space-y-3 animate-in fade-in zoom-in-95 duration-500">
       
-      {/* Navigation Header */}
-      <header className="flex items-center gap-4">
-        <Link
-          href="/dashboard/settings"
-          className="w-10 h-10 bg-card border border-border/50 flex items-center justify-center rounded-xl shadow-sm hover:bg-accent transition-colors"
-        >
-          <ArrowLeft className="text-foreground w-5 h-5" />
-        </Link>
-      </header>
+
 
       {/* Add Custom Payment Mode Form */}
       <section className={`bg-card p-[15px] border border-border/40 shadow-sm ${getCardRadiusClass()}`}>

@@ -4,11 +4,12 @@ import React, { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import BottomNav from "@/components/BottomNav";
 import Link from "next/link";
-import { Bell, Settings, Loader2 } from "lucide-react";
+import { Bell, Settings, Loader2, ArrowLeft } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { toast } from "sonner";
+import { useHeaderStore } from "@/stores/useHeaderStore";
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -27,6 +28,7 @@ export default function DashboardLayout({
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const [isMounted, setIsMounted] = useState(false);
+  const { extraTitle } = useHeaderStore();
 
   useEffect(() => {
     setIsMounted(true);
@@ -242,9 +244,29 @@ export default function DashboardLayout({
     if (path.startsWith("/dashboard/notifications")) return "Notifications";
     if (path.startsWith("/dashboard/settings")) return "Settings";
     if (path.startsWith("/dashboard/categories")) return "Categories";
+    if (path.startsWith("/dashboard/payment-modes")) return "Payment Modes";
     if (path.startsWith("/dashboard/add")) return "Add Transaction";
     if (path.startsWith("/dashboard/edit")) return "Edit Transaction";
     return "Lumina";
+  };
+
+  const getBackButtonHref = (path: string) => {
+    if (path.startsWith("/dashboard/categories")) return "/dashboard/settings";
+    if (path.startsWith("/dashboard/payment-modes")) return "/dashboard/settings";
+    if (path.startsWith("/dashboard/notifications")) return "/dashboard";
+    if (path.startsWith("/dashboard/add")) return "/dashboard";
+    if (path.startsWith("/dashboard/edit")) return "/dashboard/history";
+    return "/dashboard";
+  };
+
+  const hasBackButton = (path: string) => {
+    return (
+      path.startsWith("/dashboard/categories") ||
+      path.startsWith("/dashboard/payment-modes") ||
+      path.startsWith("/dashboard/notifications") ||
+      path.startsWith("/dashboard/add") ||
+      path.startsWith("/dashboard/edit")
+    );
   };
 
   useEffect(() => {
@@ -319,23 +341,41 @@ export default function DashboardLayout({
         )}
 
         <header className="px-5 py-4 flex items-center justify-between">
-          <h1 className="font-heading text-xl font-black tracking-tight text-foreground">
-            {pathname === "/dashboard" || pathname === "/dashboard/" ? (
-              <>
-                {isMounted ? (
-                  <>
-                    {getGreeting()}, <span className="text-primary">{user?.name?.split(" ")[0] || "there"}</span>
-                  </>
-                ) : (
-                  <>
-                    Hello, <span className="text-primary">there</span>
-                  </>
-                )}
-              </>
-            ) : (
-              getPageTitle(pathname)
+          <div className="flex items-center gap-3">
+            {hasBackButton(pathname) && (
+              <Link 
+                href={getBackButtonHref(pathname)}
+                className="w-10 h-10 rounded-xl bg-card border border-border/50 flex items-center justify-center shadow-sm hover:bg-accent/40 active:scale-95 transition-all"
+                title="Back"
+              >
+                <ArrowLeft className="w-4.5 h-4.5 text-foreground" />
+              </Link>
             )}
-          </h1>
+            <h1 className="font-heading text-xl font-black tracking-tight text-foreground">
+              {pathname === "/dashboard" || pathname === "/dashboard/" ? (
+                <>
+                  {isMounted ? (
+                    <>
+                      {getGreeting()}, <span className="text-primary">{user?.name?.split(" ")[0] || "there"}</span>
+                    </>
+                  ) : (
+                    <>
+                      Hello, <span className="text-primary">there</span>
+                    </>
+                  )}
+                </>
+              ) : (
+                <span className="flex items-center gap-1 flex-wrap text-sm md:text-xl font-black">
+                  <span className="text-xl font-black">{getPageTitle(pathname)}</span>
+                  {pathname.startsWith("/dashboard/history") && extraTitle && (
+                    <span className="text-xs md:text-sm font-semibold text-muted-foreground/60">
+                      {extraTitle}
+                    </span>
+                  )}
+                </span>
+              )}
+            </h1>
+          </div>
           <div className="flex items-center gap-3">
             {/* Notifications Button */}
             <Link 

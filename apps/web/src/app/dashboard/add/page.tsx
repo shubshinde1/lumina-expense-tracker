@@ -460,13 +460,6 @@ function AddTransactionForm() {
 
       {/* Header Info */}
       <header className="flex items-center gap-3">
-        <Link
-          href="/dashboard"
-          className={`w-12 h-12 bg-card flex items-center justify-center border border-border/50 shadow-sm hover:bg-accent transition-colors shrink-0 ${pillRoundness}`}
-        >
-          <ArrowLeft className="text-foreground w-5 h-5" />
-        </Link>
-
         {/* Type Toggle */}
         <div className={`flex p-1 bg-muted flex-1 ${pillRoundness} border border-border/20`}>
           <button

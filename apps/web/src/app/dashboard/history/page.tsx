@@ -10,6 +10,7 @@ import { useThemeStore } from "@/stores/useThemeStore";
 import { formatDateIST, formatTimeIST, getTodayIST, getYesterdayIST, isSameDayIST, getStartOfMonthIST } from "@/lib/dateUtils";
 import HorizontalDateSelector from "@/components/HorizontalDateSelector";
 import { useLiveTransactions, useLiveTable, deleteLocalEntity, OfflineBadge } from "@/hooks/useLocalDB";
+import { useHeaderStore } from "@/stores/useHeaderStore";
 
 function groupByDate(transactions: any[]) {
   const groupsMap = new Map<string, any[]>();
@@ -125,6 +126,16 @@ export default function HistoryPage() {
 
   const totalCount = filteredTransactions.length;
   const totalBalance = filteredTransactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
+
+  const { setExtraTitle } = useHeaderStore();
+
+  useEffect(() => {
+    const formattedBalance = `${totalBalance >= 0 ? '+' : ''}₹${Math.abs(totalBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    setExtraTitle(` | ${totalCount} transactions | ${formattedBalance}`);
+    return () => {
+      setExtraTitle('');
+    };
+  }, [totalCount, totalBalance, setExtraTitle]);
 
   const PAGE_SIZE = 15;
   const paginatedTransactions = filteredTransactions.slice(0, page * PAGE_SIZE);
@@ -475,15 +486,7 @@ export default function HistoryPage() {
         </div>
       )}
 
-      {/* Summary strip */}
-      {filteredTransactions.length > 0 && (
-        <div className="flex items-center justify-between px-4 py-3 bg-card rounded-2xl border border-border">
-          <span className="text-xs text-muted-foreground">{totalCount} transactions</span>
-          <span className={`font-heading font-bold text-sm ${totalBalance >= 0 ? 'text-primary' : 'text-destructive'}`}>
-            {totalBalance >= 0 ? '+' : ''}₹{Math.abs(totalBalance).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-          </span>
-        </div>
-      )}
+      {/* Summary strip moved to main header */}
 
       {/* Grouped Transactions */}
       {filteredTransactions.length === 0 ? (

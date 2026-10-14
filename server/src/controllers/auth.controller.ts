@@ -11,6 +11,20 @@ import { parseUserAgent } from "../utils/userAgent";
 // Random 6 digit generator helper
 const generateOtpCode = () => Math.floor(100000 + Math.random() * 900000).toString();
 
+// Keep the 3-session cap without locking the account out. Forgotten browsers
+// never clear their session row, so a new login replaces the oldest one.
+const makeRoomForSession = (user: any) => {
+  while (user.sessions && user.sessions.length >= 3) {
+    let oldestIndex = 0;
+    user.sessions.forEach((session: any, index: number) => {
+      const oldestTime = new Date(user.sessions[oldestIndex]?.createdAt || 0).getTime();
+      const currentTime = new Date(session?.createdAt || 0).getTime();
+      if (currentTime < oldestTime) oldestIndex = index;
+    });
+    user.sessions.splice(oldestIndex, 1);
+  }
+};
+
 export const requestRegisterOtp = async (req: Request, res: Response) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "Email is required" });
@@ -137,11 +151,7 @@ export const authUser = async (req: Request, res: Response) => {
         return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
       }
 
-      if (user.sessions && user.sessions.length >= 3) {
-        return res.status(400).json({ 
-          message: "Login restricted: You have reached the maximum limit of 3 active sessions. Please log out from another device." 
-        });
-      }
+      makeRoomForSession(user);
 
       if (user.role === "admin") {
         await Otp.deleteMany({ email: user.email, type: "login" });
@@ -205,11 +215,7 @@ export const verifyAdminLoginOtp = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Your account has been suspended. Please contact support." });
     }
 
-    if (user.sessions && user.sessions.length >= 3) {
-      return res.status(400).json({ 
-        message: "Login restricted: You have reached the maximum limit of 3 active sessions. Please log out from another device." 
-      });
-    }
+    makeRoomForSession(user);
 
     await Otp.deleteMany({ email, type: "login" });
 

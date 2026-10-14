@@ -33,7 +33,15 @@ export default function AuthPage() {
   // 1. Login
   const loginMutation = useMutation({
     mutationFn: async () => await api.post('/auth/login', { email, password }),
-    onSuccess: (res) => { toast.success("Login successful"); setUser(res.data); router.push("/dashboard"); },
+    onSuccess: (res) => {
+      if (res.data?.requiresOtp) {
+        toast.message(res.data.message || "Enter the verification code sent to your email.");
+        return;
+      }
+      toast.success("Login successful");
+      setUser(res.data);
+      router.push("/dashboard");
+    },
     onError: (err: any) => toast.error(err.response?.data?.message || "Login failed")
   });
 

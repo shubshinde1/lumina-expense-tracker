@@ -106,15 +106,12 @@ export default function DashboardPage() {
         if (Capacitor.isNativePlatform() && user) {
           const LuminaBridge = registerPlugin<any>('LuminaBridge');
           
-          const getBaseURL = () => {
-            if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-            return 'https://lumina-expense-tracker-85ym.vercel.app/api';
-          };
-          
+          const { getApiBaseUrl } = await import('@/lib/apiBase');
+
           await LuminaBridge.saveUserSession({
             token: user.token,
             email: user.email,
-            apiUrl: getBaseURL()
+            apiUrl: getApiBaseUrl()
           });
           console.log("✅ Synced active auth session to native storage from Dashboard");
         }

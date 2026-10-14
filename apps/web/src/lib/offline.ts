@@ -1,14 +1,7 @@
 import axios from 'axios';
+import { getApiBaseUrl } from './apiBase';
 
-const getBaseURL = () => {
-  if (typeof window !== 'undefined') {
-    const customUrl = localStorage.getItem('custom_api_url');
-    if (customUrl) {
-      return customUrl;
-    }
-  }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
-};
+const getBaseURL = () => getApiBaseUrl();
 
 // Create a raw axios instance for sync requests to avoid loops
 const rawApi = axios.create({

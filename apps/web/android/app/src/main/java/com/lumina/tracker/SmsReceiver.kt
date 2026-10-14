@@ -63,8 +63,13 @@ class SmsReceiver : BroadcastReceiver() {
                         // 5. Run synchronous parser
                         val parsed = SmsParser.parse(context, sender, body, timestamp)
 
-                        // 6. Post notification immediately
-                        TransactionNotifier.notify(context, parsed)
+                        // 6. Post notification immediately. A missing POST_NOTIFICATIONS grant
+                        // must not skip the local transaction insert below.
+                        try {
+                            TransactionNotifier.notify(context, parsed)
+                        } catch (e: Exception) {
+                            Log.e("LuminaSmsReceiver", "Failed to post transaction notification", e)
+                        }
 
                         // 7. Write directly to shared local SQLite DB and populate Outbox
                         try {

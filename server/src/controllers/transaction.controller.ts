@@ -4,6 +4,7 @@ import { Transaction } from "../models/Transaction";
 import { Category } from "../models/Category";
 import { Notification } from "../models/Notification";
 import { PaymentMode } from "../models/PaymentMode";
+import { parseSmsRules } from "../utils/smsRules";
 
 export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
   try {
@@ -44,7 +45,7 @@ export const getDashboardSummary = async (req: AuthRequest, res: Response) => {
 
 export const addTransaction = async (req: AuthRequest, res: Response) => {
   try {
-    const { type, amount, description, date, category, subcategory, location, paymentMode, subPaymentMode } = req.body;
+    const { type, amount, description, date, category, subcategory, location, paymentMode, subPaymentMode, metadata } = req.body;
     const userId = req.user._id;
 
     const transaction = await Transaction.create({
@@ -59,6 +60,46 @@ export const addTransaction = async (req: AuthRequest, res: Response) => {
       paymentMode: paymentMode || 'UPI',
       subPaymentMode: subPaymentMode || undefined,
     });
+
+    const smsHash = typeof metadata?.smsHash === "string" ? metadata.smsHash : "";
+    const rawSms = typeof metadata?.rawSms === "string" ? metadata.rawSms : "";
+    if (smsHash || rawSms) {
+      try {
+        const existingNotif = smsHash
+          ? await Notification.findOne({
+              user: userId,
+              type: "transaction",
+              "metadata.smsHash": smsHash,
+            })
+          : await Notification.findOne({
+              user: userId,
+              type: "transaction",
+              "metadata.smsText": rawSms,
+            });
+
+        if (!existingNotif) {
+          const isIncome = transaction.type === "income";
+          const label = description || "SMS";
+          await Notification.create({
+            user: userId,
+            title: isIncome ? "Credited (Income)" : "Debited (Spend)",
+            message: `Logged ${isIncome ? "income" : "spend"} of ₹${transaction.amount} at ${label}.`,
+            type: "transaction",
+            actionUrl: "/dashboard/history",
+            metadata: {
+              amount: String(transaction.amount),
+              description: String(label),
+              type: transaction.type,
+              smsText: rawSms,
+              smsHash,
+              transactionId: transaction._id.toString(),
+            },
+          });
+        }
+      } catch (notifyError) {
+        console.error("Failed to create SMS transaction notification:", notifyError);
+      }
+    }
 
     res.status(201).json(transaction);
   } catch (error: any) {
@@ -251,6 +292,14 @@ export const parseTransactionTextHelper = async (text: string, userId: any): Pro
 
 CRITICAL: If the user states a mathematical addition (e.g., "1200 + 120" or "1200 rupees plus 120 rupees"), evaluate the math expression and set the "amount" field to the calculated final sum.
 
+DIRECTION RULES:
+- The verb next to the amount decides type. Use the earliest real transaction phrase.
+- "debited", "paid to", "sent to", "withdrawn", "spent", "purchase of", and "received by <merchant>" are expense.
+- "credited to your account", "received from", "deposited", "salary", and "transferred to your account" are income.
+- "transferred to <name or VPA>" is an expense.
+- A later disclaimer such as "will be credited back", or the word "cashback" inside a debit SMS, is NOT income.
+- Ignore available balance, Avl Bal, and Bal figures. The amount is the figure next to the transaction verb, not the balance.
+
 Available categories in our database:
 ${JSON.stringify(categoriesPromptList, null, 2)}
 
@@ -303,65 +352,14 @@ Text to parse:
   }
 
   // LOCAL RULE-BASED FALLBACK PARSER (Works completely offline & costs $0)
+  const rules = parseSmsRules(text);
   const lowerText = text.toLowerCase();
+  const type = rules.type;
+  const amount = rules.amount;
+  const paymentMode = rules.paymentMode;
+  const subPaymentMode = rules.subPaymentMode || "";
 
-  // 1. Amount Extraction
-  let amount = 0;
-
-  // Check for mathematical addition keywords first
-  const hasAdditionKeyword = lowerText.includes("+") || lowerText.includes("plus") || lowerText.includes("add") || lowerText.includes("sum");
-  if (hasAdditionKeyword) {
-    const numbers = text.match(/\b\d+(?:\.\d{1,2})?\b/g);
-    if (numbers && numbers.length > 1) {
-      const validNumbers = numbers
-        .map((num: string) => parseFloat(num))
-        .filter((val: number) => !isNaN(val) && val > 0 && val < 1000000);
-
-      if (validNumbers.length > 1) {
-        amount = validNumbers.reduce((acc: number, val: number) => acc + val, 0);
-      }
-    }
-  }
-
-  if (amount === 0) {
-    const amountRegexes = [
-      /(?:rs\.?|inr|₹)\s*([\d,]+(?:\.\d{1,2})?)/i,
-      /debited\s*(?:for|with)?\s*(?:rs\.?|inr|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
-      /spent\s*(?:rs\.?|inr|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
-      /credited\s*(?:with)?\s*(?:rs\.?|inr|₹)?\s*([\d,]+(?:\.\d{1,2})?)/i,
-      /([\d,]+(?:\.\d{1,2})?)\s*(?:rupees|rs|inr)/i,
-      /\b([\d,]+\.\d{2})\b/
-    ];
-
-    for (const regex of amountRegexes) {
-      const match = text.match(regex);
-      if (match && match[1]) {
-        const val = parseFloat(match[1].replace(/,/g, ''));
-        if (!isNaN(val) && val > 0) {
-          amount = val;
-          break;
-        }
-      }
-    }
-  }
-
-  if (amount === 0) {
-    const standaloneNum = text.match(/\b\d+\b/);
-    if (standaloneNum) {
-      amount = parseFloat(standaloneNum[0]);
-    }
-  }
-
-  // 2. Transaction Type Extraction
-  let type: "income" | "expense" = "expense";
-  const incomeKeywords = ["salary", "credited", "received", "added", "refund", "won", "deposited", "bonus", "gift", "cashback"];
-  const hasIncomeKeyword = incomeKeywords.some(keyword => lowerText.includes(keyword));
-  if (hasIncomeKeyword) {
-    type = "income";
-  }
-
-  // 3. Category & Subcategory matching
-  let matchedCategory = categories.find(c => c.type === type);
+  let matchedCategory = categories.find((c) => c.type === type);
   let matchedSubcategory = null;
   let foundMatch = false;
 
@@ -379,66 +377,14 @@ Text to parse:
     if (foundMatch) break;
   }
 
-  if (!foundMatch) {
-    for (const cat of categories) {
-      const catNameLower = cat.name.toLowerCase();
-      let isMatch = lowerText.includes(catNameLower);
-
-      if (!isMatch) {
-        if (catNameLower === "food") {
-          isMatch = ["restaurant", "swiggy", "zomato", "dining", "dinner", "lunch", "breakfast", "pizza", "burger", "cafe", "tea", "starbucks", "groceries", "eats"].some(k => lowerText.includes(k));
-        } else if (catNameLower === "vehicle" || catNameLower === "travel") {
-          isMatch = ["fuel", "petrol", "diesel", "gas", "car", "service", "uber", "ola", "flight", "hotel", "bus", "train", "trip", "ticket", "cab"].some(k => lowerText.includes(k));
-        } else if (catNameLower === "bills") {
-          isMatch = ["electricity", "broadband", "internet", "wifi", "recharge", "phone", "subscription", "netflix", "spotify", "rent", "water", "bill"].some(k => lowerText.includes(k));
-        } else if (catNameLower === "salary") {
-          isMatch = ["stipend", "pay", "income", "job", "salary", "bonus"].some(k => lowerText.includes(k));
-        }
-      }
-
-      if (isMatch) {
-        matchedCategory = cat;
-        break;
-      }
-    }
+  if (!foundMatch && rules.categoryName) {
+    const named = categories.find((c) => c.name.toLowerCase() === rules.categoryName.toLowerCase());
+    if (named) matchedCategory = named;
   }
 
-  // 4. Description
-  let description = text.trim();
-  if (text.length > 40) {
-    const merchantMatch = text.match(/(?:at|to|info)\s+([A-Za-z0-9\s]+?)(?:\s+via|\s+on|\s+ref|\s+txn|rs|\b\d|\.)/i);
-    if (merchantMatch && merchantMatch[1]) {
-      description = merchantMatch[1].trim();
-    } else {
-      description = text.slice(0, 37) + "...";
-    }
-  }
-
-  // 5. Payment Mode & Sub Payment Mode
-  let paymentMode = "UPI";
-  let subPaymentMode = "";
-  if (lowerText.includes("cash") || lowerText.includes("cod") || lowerText.includes("hand cash")) {
-    paymentMode = "Cash";
-  } else if (lowerText.includes("credit card") || lowerText.includes("cc") || lowerText.includes("creditcard")) {
-    paymentMode = "Credit Card";
-  } else if (lowerText.includes("debit card") || lowerText.includes("dc") || lowerText.includes("debitcard") || lowerText.includes("card")) {
-    paymentMode = "Debit Card";
-  } else if (lowerText.includes("net banking") || lowerText.includes("netbanking") || lowerText.includes("transfer") || lowerText.includes("neft") || lowerText.includes("rtgs") || lowerText.includes("imps")) {
-    paymentMode = "Net Banking";
-  } else if (lowerText.includes("upi") || lowerText.includes("gpay") || lowerText.includes("phonepe") || lowerText.includes("paytm") || lowerText.includes("bhim") || lowerText.includes("scan")) {
-    paymentMode = "UPI";
-  }
-
-  if (paymentMode === "UPI") {
-    if (lowerText.includes("phonepe") || lowerText.includes("phone pe")) subPaymentMode = "PhonePe";
-    else if (lowerText.includes("gpay") || lowerText.includes("google pay")) subPaymentMode = "GPay";
-    else if (lowerText.includes("paytm")) subPaymentMode = "Paytm";
-    else if (lowerText.includes("cred")) subPaymentMode = "Cred";
-  } else if (paymentMode === "Net Banking") {
-    if (lowerText.includes("hdfc")) subPaymentMode = "HDFC";
-    else if (lowerText.includes("sbi") || lowerText.includes("state bank")) subPaymentMode = "SBI";
-    else if (lowerText.includes("icici")) subPaymentMode = "ICICI";
-    else if (lowerText.includes("axis")) subPaymentMode = "Axis";
+  let description = rules.merchant || text.trim();
+  if (!rules.merchant && text.length > 40) {
+    description = text.slice(0, 37) + "...";
   }
 
   return {

@@ -56,7 +56,7 @@ class SmsParserTest {
 
         assertEquals(25000.0, parsed.amount, 0.0)
         assertEquals("income", parsed.direction)
-        assertEquals("Bank transfer", parsed.paymentType)
+        assertEquals("Net Banking", parsed.paymentType)
         assertEquals("JOHN DOE INC", parsed.merchant)
         assertEquals("5678", parsed.accountRef)
         assertEquals("high", parsed.confidence)
@@ -69,7 +69,7 @@ class SmsParserTest {
 
         assertEquals(499.0, parsed.amount, 0.0)
         assertEquals("expense", parsed.direction)
-        assertEquals("Mandate", parsed.paymentType)
+        assertEquals("UPI", parsed.paymentType)
         assertEquals("NETFLIX", parsed.merchant)
         assertEquals("", parsed.accountRef) // No account suffix
         assertEquals("low", parsed.confidence) // low confidence due to missing account ref
@@ -82,12 +82,44 @@ class SmsParserTest {
 
         assertEquals(1200.0, parsed.amount, 0.0)
         assertEquals("expense", parsed.direction)
-        assertEquals("Card", parsed.paymentType)
+        assertEquals("Debit Card", parsed.paymentType)
         assertEquals("AMAZON", parsed.merchant)
         assertEquals("9012", parsed.accountRef)
         assertEquals("Shopping", parsed.category)
         assertEquals("Amazon", parsed.subcategory)
         assertEquals("high", parsed.confidence)
+    }
+
+    @Test
+    fun testSmsParser_debitWithCreditedBackDisclaimer() {
+        val sms = "Rs.500.00 debited from A/c **1234 on 14-10-26 to SWIGGY. If not done by you, the amount will be credited back. Avl Bal: Rs.12000.00"
+        val parsed = SmsParser.parse(null, "HDFC", sms)
+        assertEquals("expense", parsed.direction)
+        assertEquals(500.0, parsed.amount, 0.0)
+    }
+
+    @Test
+    fun testSmsParser_paidToMerchant() {
+        val sms = "You paid Rs.120 to Swiggy via UPI. Payment received by Swiggy."
+        val parsed = SmsParser.parse(null, "GPAY", sms)
+        assertEquals("expense", parsed.direction)
+        assertEquals(120.0, parsed.amount, 0.0)
+    }
+
+    @Test
+    fun testSmsParser_creditedToAccount() {
+        val sms = "INR 5,000.00 credited to your a/c XX1234 on 14-Oct-26 by NEFT."
+        val parsed = SmsParser.parse(null, "SBI", sms)
+        assertEquals("income", parsed.direction)
+        assertEquals(5000.0, parsed.amount, 0.0)
+    }
+
+    @Test
+    fun testSmsParser_balanceBeforeDebitAmount() {
+        val sms = "Avl Bal Rs.12,000.00. Your a/c XX1234 has been debited for Rs.250.00 towards UPI/SWIGGY."
+        val parsed = SmsParser.parse(null, "HDFC", sms)
+        assertEquals("expense", parsed.direction)
+        assertEquals(250.0, parsed.amount, 0.0)
     }
 
     private fun getMockContext(): android.content.Context? {
